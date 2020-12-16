@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">DoriftoTaxi</string>
+    <string name="driverBtn">Я Водитель</string>
+    <string name="customerBtn">Я Заказчик</string>
+    <string name="email">Почта</string>
+    <string name="password">Пароль</string>
+    <string name="signIn">Войти</string>
+    <string name="registration">Регистрация</string>
+    <string name="driverStatus">Вход для таксистов</string>
+    <string name="createQuestion">Еще нет аккаунта?</string>
+    <string name="title_activity_drivers_map">Map</string>
+    <string name="title_activity_customers_map">Map</string>
+</resources>

@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "1070586185916",
+    "project_id": "doriftotaxi-d0abb",
+    "storage_bucket": "doriftotaxi-d0abb.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1070586185916:android:ec448eaa3181a6f03328b9",
+        "android_client_info": {
+          "package_name": "com.example.doriftotaxi"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1070586185916-73ir00k0vlpakr5a0b91j11dp73gfsii.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBrGMEckojgTqCLCD5_kiqShA5KupcpCKM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1070586185916-73ir00k0vlpakr5a0b91j11dp73gfsii.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

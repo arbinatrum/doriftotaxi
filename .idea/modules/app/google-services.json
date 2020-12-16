@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "873552116216",
+    "project_id": "doriftotaxi",
+    "storage_bucket": "doriftotaxi.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:873552116216:android:5734feccab274e9e71fe0d",
+        "android_client_info": {
+          "package_name": "com.example.doriftotaxi"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "873552116216-md8hnspb9eo48v60hmfg92eqrf0d5rrv.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.doriftotaxi",
+            "certificate_hash": "cde2d68d09d405c18e6da9125160d780bb9c74d7"
+          }
+        },
+        {
+          "client_id": "873552116216-2s762hrqk1o5k7ubrf596gck17okvbvk.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyACeTLLVGWE2jhxspKrryrjT3kea2Wy9gc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "873552116216-2s762hrqk1o5k7ubrf596gck17okvbvk.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
