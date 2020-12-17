@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:map="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -20,8 +19,8 @@
         android:background="@color/common_google_signin_btn_text_dark_pressed"
         android:textColor="@android:color/holo_green_dark"
         android:layout_marginTop="5dp"
-        android:layout_marginLeft="5dp"
-        android:text="Настройки" />
+        android:layout_marginStart="5dp"
+        android:text="@string/driverSettingsBtn" />
 
     <Button
         android:id="@+id/driver_logout_button"
@@ -31,7 +30,18 @@
         android:background="@color/common_google_signin_btn_text_dark_pressed"
         android:textColor="@android:color/holo_green_dark"
         android:layout_marginTop="5dp"
-        android:layout_marginRight="5dp"
-        android:text="Выйти" />
+        android:layout_marginEnd="5dp"
+        android:text="@string/DriverExitBtn" />
+
+    <Button
+        android:id="@+id/driver_Approved_button"
+        android:layout_width="300dp"
+        android:layout_height="wrap_content"
+        android:background="@color/common_google_signin_btn_text_dark_pressed"
+        android:textColor="@android:color/holo_green_dark"
+        android:layout_alignParentBottom="true"
+        android:layout_centerHorizontal="true"
+        android:layout_marginBottom="15dp"
+        android:text="@string/DriverReadyToOrder" />
 
 </RelativeLayout>

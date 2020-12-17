@@ -43,9 +43,13 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
     Location lastLocation;
     LocationRequest locationRequest;
 
-    private Button LogoutDriverButton, SettingsDriverButton;
+    private String driverID;
+    private Button LogoutDriverButton, SettingsDriverButton, DriverApprovedButton;
     private FirebaseAuth mAuth;
     private FirebaseUser currentUser;
+    private DatabaseReference DriverDatabaseRef;
+    private LatLng DriverPosition;
+
     private Boolean currentLogoutDriverStatus;
 
     @Override
@@ -53,16 +57,34 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_drivers_map);
 
-        mAuth = FirebaseAuth.getInstance();
-        currentUser = mAuth.getCurrentUser();
+        /*mAuth = FirebaseAuth.getInstance();
+        currentUser = mAuth.getCurrentUser();*/
 
         LogoutDriverButton = (Button)findViewById(R.id.driver_logout_button);
         SettingsDriverButton = (Button)findViewById(R.id.driver_settings_button);
+        DriverApprovedButton = (Button)findViewById(R.id.driver_Approved_button);
+
+        mAuth = FirebaseAuth.getInstance();
+        currentUser = mAuth.getCurrentUser();
+        driverID = FirebaseAuth.getInstance().getCurrentUser().getUid();
+        DriverDatabaseRef = FirebaseDatabase.getInstance().getReference().child("Driver Available");
 
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
         assert mapFragment != null;
         mapFragment.getMapAsync(this);
+
+        DriverApprovedButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+
+                GeoFire geoFire = new GeoFire(DriverDatabaseRef);
+                geoFire.setLocation(driverID, new GeoLocation(lastLocation.getLatitude(), lastLocation.getLongitude()));
+
+                DriverApprovedButton.setVisibility(View.INVISIBLE);
+                DriverApprovedButton.setEnabled(false);
+            }
+        });
 
         LogoutDriverButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -93,13 +115,13 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
     @Override
     public void onConnected(@Nullable Bundle bundle) {
         locationRequest = new LocationRequest();
-        locationRequest.setInterval(1000);
+        locationRequest.setInterval(1000); //Интервал обновления геолокации
         locationRequest.setFastestInterval(1000);
         locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
 
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             return;
-        }
+        } //Если выданы пермишны на геолокацию, то получаем данные о своем месторасположении
         LocationServices.FusedLocationApi.requestLocationUpdates(googleApiClient, locationRequest, this);
     }
 
@@ -114,18 +136,13 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
     }
 
     @Override
-    public void onLocationChanged(Location location) {
+    public void onLocationChanged(final Location location) {
         lastLocation = location;
 
+        //Мое месторасположение
         LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
         mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
         mMap.animateCamera(CameraUpdateFactory.zoomTo(12));
-
-        String userID = FirebaseAuth.getInstance().getCurrentUser().getUid();
-        DatabaseReference DriverAvailabilityRef = FirebaseDatabase.getInstance().getReference().child("Driver Available");
-
-        GeoFire geoFire = new GeoFire(DriverAvailabilityRef);
-        geoFire.setLocation(userID, new GeoLocation(location.getLatitude(), location.getLongitude()));
     }
 
     protected synchronized void buildGoogleApiClient(){
@@ -142,8 +159,7 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
     protected void onStop() {
         super.onStop();
 
-        if(!currentLogoutDriverStatus ) {
-
+        if(!currentLogoutDriverStatus) {
             DisconnectDriver();
         }
     }
