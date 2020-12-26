@@ -16,8 +16,8 @@
         android:layout_width="150dp"
         android:layout_height="50dp"
         android:layout_alignParentStart="true"
-        android:background="@color/common_google_signin_btn_text_dark_pressed"
-        android:textColor="@android:color/holo_green_dark"
+        android:background="@drawable/welcome_button"
+        android:textColor="@android:color/black"
         android:layout_marginTop="5dp"
         android:layout_marginStart="5dp"
         android:text="@string/driverSettingsBtn" />
@@ -27,8 +27,8 @@
         android:layout_width="150dp"
         android:layout_height="50dp"
         android:layout_alignParentEnd="true"
-        android:background="@color/common_google_signin_btn_text_dark_pressed"
-        android:textColor="@android:color/holo_green_dark"
+        android:background="@drawable/welcome_button"
+        android:textColor="@android:color/black"
         android:layout_marginTop="5dp"
         android:layout_marginEnd="5dp"
         android:text="@string/DriverExitBtn" />
