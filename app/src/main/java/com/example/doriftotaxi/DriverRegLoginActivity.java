@@ -17,6 +17,7 @@ import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 
 public class DriverRegLoginActivity extends AppCompatActivity {
 
@@ -24,6 +25,8 @@ public class DriverRegLoginActivity extends AppCompatActivity {
     Button signInBtn, signUpBtn;
     EditText emailET, passwordET;
 
+
+    FirebaseUser currentUser;
     FirebaseAuth mAuth;
     ProgressDialog loadingBar;
 
@@ -78,6 +81,25 @@ public class DriverRegLoginActivity extends AppCompatActivity {
             }
         });
     }
+
+    //Для проверки авторизован ли пользователь, если да, то кидаем сразу на DriversMapActivity, если нет, то
+    //остаемся здесь
+/*    @Override
+    protected void onStart() {
+
+        mAuth = FirebaseAuth.getInstance();
+        currentUser = mAuth.getCurrentUser();
+        super.onStart();
+        FirebaseUser cUser = mAuth.getCurrentUser();
+        if(cUser != null){
+            Toast.makeText(this, "Вход под " + cUser.getEmail(), Toast.LENGTH_SHORT).show();
+            Intent driverIntent = new Intent(DriverRegLoginActivity.this, DriversMapActivity.class);
+            startActivity(driverIntent);
+        }
+        else{
+            Toast.makeText(this, "Вход не выполнен", Toast.LENGTH_SHORT).show();
+        }
+    }*/
 
     private void SignInDriver(String email, String password) {
         loadingBar.setTitle("Вход");
