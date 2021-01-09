@@ -68,6 +68,9 @@ public class DriverRegLoginActivity extends AppCompatActivity {
                 String password = passwordET.getText().toString();
 
                 RegisterDriver(email, password);
+                Intent intent = new Intent(DriverRegLoginActivity.this, DriverSettingsActivity.class);
+                intent.putExtra("type", "Register_Driver");
+                startActivity(intent);
             }
         });
 

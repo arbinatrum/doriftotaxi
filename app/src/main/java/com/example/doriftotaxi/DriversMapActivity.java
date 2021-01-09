@@ -31,6 +31,7 @@ import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 
+import java.util.Objects;
 import java.util.Set;
 
 public class DriversMapActivity extends FragmentActivity implements OnMapReadyCallback,
@@ -66,13 +67,22 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
 
         mAuth = FirebaseAuth.getInstance();
         currentUser = mAuth.getCurrentUser();
-        driverID = FirebaseAuth.getInstance().getCurrentUser().getUid();
+        driverID = Objects.requireNonNull(FirebaseAuth.getInstance().getCurrentUser()).getUid();
         DriverDatabaseRef = FirebaseDatabase.getInstance().getReference().child("Driver Available");
 
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
         assert mapFragment != null;
         mapFragment.getMapAsync(this);
+
+        SettingsDriverButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(DriversMapActivity.this, DriverSettingsActivity.class);
+                intent.putExtra("type", "Drivers");
+                startActivity(intent);
+            }
+        });
 
         DriverApprovedButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -96,6 +106,8 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
                 DisconnectDriver();
             }
         });
+
+
     }
 
 
