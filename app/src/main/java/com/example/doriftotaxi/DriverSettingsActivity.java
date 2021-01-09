@@ -16,28 +16,24 @@ public class DriverSettingsActivity extends AppCompatActivity {
 
     private String getType;
 
-    private CircleImageView circleImageView;
-    private EditText nameET, phoneET, carET, carNumberET;
-    private ImageView backBtn;
-    private TextView imageChangeBtn;
-    private Button saveBtn;
+    //private CircleImageView circleImageView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_driver_settings);
 
-        getType = getIntent().getStringExtra("type");
+        //getType = getIntent().getStringExtra("type");
 
 
         //circleImageView = (CircleImageView)findViewById(R.id.profile_image);
-        nameET = (EditText) findViewById(R.id.name_text);
-        phoneET = (EditText)findViewById(R.id.phone_number_text);
-        carET = (EditText)findViewById(R.id.car_model_text);
-        carNumberET = (EditText)findViewById(R.id.car_number_text);
-        saveBtn = (Button) findViewById(R.id.save_changes_btn);
-        backBtn = (ImageView)findViewById(R.id.close_btn);
-        imageChangeBtn = (TextView)findViewById(R.id.change_photo_btn);
+        EditText nameET = findViewById(R.id.name_text);
+        EditText phoneET = findViewById(R.id.phone_number_text);
+        EditText carET = findViewById(R.id.car_model_text);
+        EditText carNumberET = findViewById(R.id.car_number_text);
+        Button saveBtn = findViewById(R.id.save_changes_btn);
+        ImageView backBtn = findViewById(R.id.close_btn);
+        TextView imageChangeBtn = findViewById(R.id.change_photo_btn);
 
         /*if (getType.equals("Register_Driver")){
             backBtn.setOnClickListener(new View.OnClickListener() {

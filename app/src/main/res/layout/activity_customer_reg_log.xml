@@ -4,13 +4,74 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@drawable/welcome"
     tools:context=".CustomerRegLogActivity">
 
+    <EditText
+        android:id="@+id/customerEmail"
+        android:layout_width="250dp"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/statusCustomer"
+        android:layout_marginTop="10dp"
+        android:layout_centerHorizontal="true"
+        android:ems="10"
+        android:hint="@string/email"
+        android:inputType="textEmailAddress" />
+
+    <EditText
+        android:id="@+id/customerPassword"
+        android:layout_width="250dp"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/customerEmail"
+        android:layout_marginTop="10dp"
+        android:layout_centerHorizontal="true"
+        android:ems="10"
+        android:hint="@string/password"
+        android:inputType="textPassword" />
+
+    <Button
+        android:id="@+id/signInCustomer"
+        android:layout_width="120dp"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/customerPassword"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="10dp"
+        android:background="@android:color/holo_green_light"
+        android:text="@string/signIn"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:textAllCaps="false"/>
+
+    <Button
+        android:id="@+id/signUpCustomer"
+        android:layout_width="120dp"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/signInCustomer"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="30dp"
+        android:text="@string/registration"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:textAllCaps="false"
+        android:background="@android:color/white"/>
+
     <TextView
-        android:id="@+id/textView"
+        android:id="@+id/statusCustomer"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Страница входа для клиентов"
-        tools:layout_editor_absoluteX="80dp"
-        tools:layout_editor_absoluteY="144dp" />
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="350dp"
+        android:textSize="25sp"
+        android:textStyle="bold"
+        android:text="Вход" />
+
+    <TextView
+        android:id="@+id/accountCreateCustomer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerHorizontal="true"
+        android:layout_below="@+id/signInCustomer"
+        android:layout_marginTop="5dp"
+        android:text="@string/createQuestion" />
+
 </RelativeLayout>

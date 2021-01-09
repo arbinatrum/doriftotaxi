@@ -1,8 +1,44 @@
 <?xml version="1.0" encoding="utf-8"?>
-<fragment xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/map"
-    android:name="com.google.android.gms.maps.SupportMapFragment"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    tools:context=".CustomersMapActivity" />
+    android:layout_height="wrap_content"
+    tools:context=".CustomersMapActivity">
+
+    <fragment
+        android:id="@+id/map"
+        android:name="com.google.android.gms.maps.SupportMapFragment"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        />
+
+    <Button
+        android:id="@+id/customer_settings_button"
+        android:background="@drawable/welcome_button"
+        android:layout_width="150dp"
+        android:layout_height="50dp"
+        android:layout_margin="5dp"
+        android:text="Настройки"
+        android:layout_alignParentStart="true"/>
+
+    <Button
+        android:id="@+id/customer_logout_button"
+        android:background="@drawable/welcome_button"
+        android:layout_width="150dp"
+        android:layout_height="50dp"
+        android:layout_margin="5dp"
+        android:text="Выйти"
+        android:layout_alignParentEnd="true"/>
+
+    <Button
+        android:id="@+id/customer_order_button"
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:layout_margin="5dp"
+        android:text="Вызвать такси"
+        android:layout_alignParentBottom="true"/>
+
+
+</RelativeLayout>
+
+

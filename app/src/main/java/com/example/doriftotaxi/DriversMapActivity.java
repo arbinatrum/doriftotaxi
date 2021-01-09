@@ -45,7 +45,7 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
     LocationRequest locationRequest;
 
     private String driverID;
-    private Button LogoutDriverButton, SettingsDriverButton, DriverApprovedButton;
+    private Button DriverApprovedButton;
     private FirebaseAuth mAuth;
     private FirebaseUser currentUser;
     private DatabaseReference DriverDatabaseRef;
@@ -61,8 +61,8 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
         /*mAuth = FirebaseAuth.getInstance();
         currentUser = mAuth.getCurrentUser();*/
 
-        LogoutDriverButton = (Button)findViewById(R.id.driver_logout_button);
-        SettingsDriverButton = (Button)findViewById(R.id.driver_settings_button);
+        Button logoutDriverButton = (Button) findViewById(R.id.driver_logout_button);
+        Button settingsDriverButton = (Button) findViewById(R.id.driver_settings_button);
         DriverApprovedButton = (Button)findViewById(R.id.driver_Approved_button);
 
         mAuth = FirebaseAuth.getInstance();
@@ -75,7 +75,7 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
         assert mapFragment != null;
         mapFragment.getMapAsync(this);
 
-        SettingsDriverButton.setOnClickListener(new View.OnClickListener() {
+        settingsDriverButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 Intent intent = new Intent(DriversMapActivity.this, DriverSettingsActivity.class);
@@ -96,7 +96,7 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
             }
         });
 
-        LogoutDriverButton.setOnClickListener(new View.OnClickListener() {
+        logoutDriverButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 currentLogoutDriverStatus = true;
@@ -109,8 +109,6 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
 
 
     }
-
-
 
     @Override
     public void onMapReady(GoogleMap googleMap) {
@@ -177,7 +175,7 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
     }
 
     private void DisconnectDriver() {
-        String userID = FirebaseAuth.getInstance().getCurrentUser().getUid();
+        String userID = Objects.requireNonNull(FirebaseAuth.getInstance().getCurrentUser()).getUid();
         DatabaseReference DriverAvailabilityRef = FirebaseDatabase.getInstance().getReference().child("Driver Available");
 
         GeoFire geoFire = new GeoFire(DriverAvailabilityRef);
