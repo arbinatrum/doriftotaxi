@@ -4,13 +4,74 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".CustomerRegLogActivity">
+    tools:context=".CustomerRegLogActivity"
+    android:layout_centerVertical="true">
 
-    <TextView
-        android:id="@+id/textView"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Страница входа для клиентов"
-        tools:layout_editor_absoluteX="80dp"
-        tools:layout_editor_absoluteY="144dp" />
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+
+        <TextView
+            android:id="@+id/textView"
+            android:layout_width="match_parent"
+            android:layout_height="55dp"
+            android:text="Давай знакомиться!"
+            android:textAlignment="center"
+            android:background="#FFF500"
+            android:textColor="#000000"
+            android:textFontWeight="100"
+            android:textSize="18dp"
+            android:gravity="center"
+
+            />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:gravity="center">
+
+            <EditText
+                android:id="@+id/editTextTextPersonName"
+                android:layout_width="400dp"
+                android:layout_height="65dp"
+                android:ems="10"
+                android:inputType="textPersonName"
+                android:hint="Как тебя зовут?"
+                android:background="#F4F2F2"
+                android:drawableBottom="false"
+                android:layout_marginBottom="20dp"
+                android:gravity="center"
+
+                />
+
+            <EditText
+                android:id="@+id/editTextPhone"
+                android:layout_width="400dp"
+                android:layout_height="65dp"
+                android:ems="10"
+                android:inputType="phone"
+                android:hint="+7-999-999-99-99"
+                android:drawableBottom="false"
+                android:layout_marginBottom="20dp"
+                android:background="#F4F2F2"
+                android:gravity="center"
+                />
+
+            <Button
+                android:id="@+id/button"
+                android:layout_width="400dp"
+                android:layout_height="55dp"
+                android:background="#00D154"
+                android:text="Поехали!"
+                />
+
+        </LinearLayout>
+
+
+    </FrameLayout>
+
+
 </RelativeLayout>
