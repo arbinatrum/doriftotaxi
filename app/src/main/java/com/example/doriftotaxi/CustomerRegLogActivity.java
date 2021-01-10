@@ -23,6 +23,7 @@ public class CustomerRegLogActivity extends AppCompatActivity {
     TextView customerStatus, question;
     Button signInBtn, signUpBtn;
     EditText emailET, passwordET;
+    TextView driverStatus;
 
     FirebaseUser currentUser;
     FirebaseAuth mAuth;
