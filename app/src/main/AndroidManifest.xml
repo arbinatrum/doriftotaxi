@@ -34,13 +34,15 @@
 
         <activity
             android:name=".CustomersMapActivity"
-            android:label="@string/title_activity_customers_map" />
+            android:label="@string/title_activity_customers_map"
+            android:screenOrientation="portrait"/>
         <activity
             android:name=".DriversMapActivity"
-            android:label="@string/title_activity_drivers_map" />
-        <activity android:name=".CustomerRegLogActivity" />
-        <activity android:name=".DriverRegLoginActivity" />
-        <activity android:name=".WelcomeActivity" />
+            android:label="@string/title_activity_drivers_map"
+            android:screenOrientation="portrait"/>
+        <activity android:name=".CustomerRegLogActivity" android:screenOrientation="portrait"/>
+        <activity android:name=".DriverRegLoginActivity" android:screenOrientation="portrait"/>
+        <activity android:name=".WelcomeActivity" android:screenOrientation="portrait"/>
         <activity
             android:name=".MainActivity"
             android:screenOrientation="portrait">

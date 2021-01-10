@@ -3,4 +3,8 @@
     <color name="colorPrimary">#6200EE</color>
     <color name="colorPrimaryDark">#3700B3</color>
     <color name="colorAccent">#03DAC5</color>
+    <color name="colorPlashes">#F4F2F2</color>
+    <color name="colorUltraGreen">#00D154</color>
+    <color name="colorBoxInfo">#FFF500</color>
+    <color name="colorLine">#8A8787</color>
 </resources>

@@ -3,7 +3,9 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     tools:context=".CustomersMapActivity">
+
 
     <fragment
         android:id="@+id/map"
@@ -30,13 +32,85 @@
         android:text="Выйти"
         android:layout_alignParentEnd="true"/>
 
-    <Button
-        android:id="@+id/customer_order_button"
+    <androidx.coordinatorlayout.widget.CoordinatorLayout
         android:layout_width="match_parent"
-        android:layout_height="50dp"
-        android:layout_margin="5dp"
-        android:text="Вызвать такси"
-        android:layout_alignParentBottom="true"/>
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        >
+
+
+    <FrameLayout
+        android:id="@+id/bottom_sheet"
+        android:layout_width="match_parent"
+        android:layout_height="320dp"
+        android:background="@drawable/bottom_sheet_background"
+        app:layout_behavior="com.google.android.material.bottomsheet.BottomSheetBehavior">
+
+
+        <ImageView
+            android:layout_width="match_parent"
+            android:layout_height="15dp"
+            android:src="@drawable/ic_baseline_remove"
+            android:layout_gravity="center|top"
+            android:layout_margin="5dp">
+        </ImageView>
+
+        <LinearLayout
+            android:id="@+id/bottomSheetContainer"
+            android:orientation="vertical" android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_marginTop="15dp"
+            >
+
+            <EditText
+                android:id="@+id/search_bar_A"
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:background="@drawable/edit_text_shape"
+                android:hint="Введите ваш Адрес"
+                android:layout_margin="10dp"
+                android:padding="15dp"
+                />
+
+            <EditText
+                android:id="@+id/search_bar_B"
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:background="@drawable/edit_text_shape"
+                android:hint="Введите адрес назначения"
+                android:layout_margin="10dp"
+                android:padding="15dp"
+                />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:background="@drawable/info_block"
+                android:textColor="@color/colorPrimaryDark"
+                android:text="Стоимость поездки "
+                android:layout_margin="10dp"
+                android:padding="15dp"
+                android:textSize="17sp"
+                />
+
+            <Button
+                android:id="@+id/customer_order_button"
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:text="Начать поиск"
+                android:background="@drawable/welcome_button"
+                android:textSize="17sp"
+                android:textAllCaps="false"
+                android:layout_margin="15dp"
+                />
+
+
+        </LinearLayout>
+
+
+    </FrameLayout>
+
+    </androidx.coordinatorlayout.widget.CoordinatorLayout>
 
 
 </RelativeLayout>

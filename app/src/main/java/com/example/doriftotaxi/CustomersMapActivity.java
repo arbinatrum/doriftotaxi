@@ -23,6 +23,7 @@ import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 
@@ -37,6 +38,7 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
     LocationRequest locationRequest;
 
     Button customerLogoutButton;
+    Button callTaxiButton;
 
     private FirebaseAuth mAuth;
     private FirebaseUser currentUser;
@@ -46,7 +48,9 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_customers_map);
 
+
         customerLogoutButton = (Button) findViewById(R.id.customer_logout_button);
+        callTaxiButton = (Button) findViewById(R.id.customer_order_button);
         mAuth = FirebaseAuth.getInstance();
         currentUser = mAuth.getCurrentUser();
 

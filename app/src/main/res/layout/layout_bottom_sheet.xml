@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/bottomSheetContainer"
+    android:orientation="vertical" android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <EditText
+        android:id="@+id/search_bar_A"
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:background="@drawable/edit_text_shape"
+        android:hint="Введите ваш Адрес"
+        android:layout_margin="10dp"
+        android:padding="15dp"
+        />
+
+    <EditText
+        android:id="@+id/search_bar_B"
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:background="@drawable/edit_text_shape"
+        android:hint="Введите адрес назначения"
+        android:layout_margin="10dp"
+        android:padding="15dp"
+        />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:background="@drawable/info_block"
+        android:textColor="@color/colorPrimaryDark"
+        android:text="Стоимость поездки "
+        android:layout_margin="10dp"
+        android:padding="15dp"
+        android:textSize="17sp"
+        />
+
+    <Button
+        android:id="@+id/search_button"
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:text="Начать поиск"
+        android:background="@drawable/welcome_button"
+        android:textSize="17sp"
+        android:textAllCaps="false"
+        android:layout_margin="15dp"
+        />
+
+
+</LinearLayout>
