@@ -28,9 +28,13 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
@@ -44,7 +48,7 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
     Location lastLocation;
     LocationRequest locationRequest;
 
-    private String driverID;
+    private String driverID, customerID = "";
     private Button DriverApprovedButton;
     private FirebaseAuth mAuth;
     private FirebaseUser currentUser;
@@ -52,14 +56,12 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
     private LatLng DriverPosition;
 
     private Boolean currentLogoutDriverStatus;
+    private DatabaseReference assignedCustomerRef, AssignedCustomerPosition;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_drivers_map);
-
-        /*mAuth = FirebaseAuth.getInstance();
-        currentUser = mAuth.getCurrentUser();*/
 
         Button logoutDriverButton = (Button) findViewById(R.id.driver_logout_button);
         Button settingsDriverButton = (Button) findViewById(R.id.driver_settings_button);
@@ -67,7 +69,7 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
 
         mAuth = FirebaseAuth.getInstance();
         currentUser = mAuth.getCurrentUser();
-        driverID = Objects.requireNonNull(FirebaseAuth.getInstance().getCurrentUser()).getUid();
+        driverID = mAuth.getCurrentUser().getUid();
         DriverDatabaseRef = FirebaseDatabase.getInstance().getReference().child("Driver Available");
 
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
@@ -87,12 +89,10 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
         DriverApprovedButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-
-                GeoFire geoFire = new GeoFire(DriverDatabaseRef);
-                geoFire.setLocation(driverID, new GeoLocation(lastLocation.getLatitude(), lastLocation.getLongitude()));
-
+                updateLocationUser();
                 DriverApprovedButton.setVisibility(View.INVISIBLE);
                 DriverApprovedButton.setEnabled(false);
+                mMap.animateCamera(CameraUpdateFactory.zoomTo(15));
             }
         });
 
@@ -100,15 +100,17 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
             @Override
             public void onClick(View v) {
                 currentLogoutDriverStatus = true;
-                mAuth.signOut();
+                mAuth.signOut();//Выход из аутентификации
 
-                LogoutDriver();
-                DisconnectDriver();
+                LogoutDriver();//Переход обратно на экран выбора пользователя
+                if(!DriverApprovedButton.isEnabled()) DisconnectDriver();//Передача данных в firebase
             }
         });
 
 
+        getAssignedCustomerRequest();
     }
+
 
     @Override
     public void onMapReady(GoogleMap googleMap) {
@@ -125,7 +127,7 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
     @Override
     public void onConnected(@Nullable Bundle bundle) {
         locationRequest = new LocationRequest();
-        locationRequest.setInterval(1000); //Интервал обновления геолокации
+        locationRequest.setInterval(1000); //Интервал обновления геолокации, 1 секунда
         locationRequest.setFastestInterval(1000);
         locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
 
@@ -147,13 +149,19 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
 
     @Override
     public void onLocationChanged(final Location location) {
-        lastLocation = location;
+        if (getApplicationContext() != null) {
+            lastLocation = location;
 
-        //Мое месторасположение
-        LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
-        mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
-        mMap.animateCamera(CameraUpdateFactory.zoomTo(12));
+            //Мое месторасположение
+            LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
+            mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
+            mMap.animateCamera(CameraUpdateFactory.zoomTo(12));
+
+            if (!DriverApprovedButton.isEnabled()) updateLocationUser();
+        }
     }
+
+
 
     protected synchronized void buildGoogleApiClient(){
         googleApiClient = new GoogleApiClient.Builder(this)
@@ -188,4 +196,85 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
         startActivity(welcomeIntent);
         finish();
     }
+
+    private void updateLocationUser() {
+        String userID = FirebaseAuth.getInstance().getCurrentUser().getUid();
+
+        DatabaseReference DriverAvailablityRef = FirebaseDatabase.getInstance().getReference().child("Driver Available");
+        GeoFire geoFireAvailablity = new GeoFire(DriverAvailablityRef);
+        //Водитель готов к заказу
+
+
+        DatabaseReference DriverWorkingRef = FirebaseDatabase.getInstance().getReference().child("Driver Working");
+        GeoFire geoFireWorking = new GeoFire(DriverWorkingRef);
+        //Водитель принял заказ
+
+        switch (customerID){
+            case "":
+                geoFireWorking.removeLocation(userID);
+                geoFireAvailablity.setLocation(userID, new GeoLocation(lastLocation.getLatitude(), lastLocation.getLongitude()));
+                break;
+            default:
+                geoFireAvailablity.removeLocation(userID);
+                geoFireWorking.setLocation(userID, new GeoLocation(lastLocation.getLatitude(), lastLocation.getLongitude()));
+                break;
+        }
+    }
+
+    private void getAssignedCustomerRequest() {
+        assignedCustomerRef = FirebaseDatabase.getInstance().getReference()
+                .child("Users").child("Drivers").child(driverID).child("CustomerRideID");
+
+        //Если данные совпали
+        assignedCustomerRef.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                if(snapshot.exists()){
+                    customerID = snapshot.getValue().toString();
+
+                    getAssignedCustomerPosition();
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+
+            }
+        });
+    }
+
+    private void getAssignedCustomerPosition() {
+        AssignedCustomerPosition = FirebaseDatabase.getInstance().getReference().child("Customer Requests")
+                .child(customerID).child("l");
+
+        AssignedCustomerPosition.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                if (snapshot.exists()) {
+                    List<Object> customerPosition = (List<Object>) snapshot.getValue();
+                    double LocationLat = 0;
+                    double LocationLng = 0;
+                    //Тут необходимо добавить диалоговое окно с информацие о заказчике.
+
+                    if (customerPosition.get(0) != null) {
+                        LocationLat = Double.parseDouble(customerPosition.get(0).toString());
+
+                    }
+                    if (customerPosition.get(1) != null) {
+                        LocationLng = Double.parseDouble(customerPosition.get(1).toString());
+                    }
+
+                    LatLng DriverLatLng = new LatLng(LocationLat, LocationLng);
+
+                    mMap.addMarker(new MarkerOptions().position(DriverLatLng).title("Забрать заказчика тут"));
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+
+            }
+        });
+    }
+
 }

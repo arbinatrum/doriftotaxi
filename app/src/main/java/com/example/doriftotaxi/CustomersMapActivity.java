@@ -26,13 +26,19 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
+
+import java.util.HashMap;
+import java.util.List;
 
 public class CustomersMapActivity extends FragmentActivity implements OnMapReadyCallback,
         GoogleApiClient.ConnectionCallbacks,
@@ -43,6 +49,7 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
     GoogleApiClient googleApiClient;
     Location lastLocation;
     LocationRequest locationRequest;
+    Marker driverMarker;
 
     Button customerLogoutButton;
     Button callTaxiButton;
@@ -55,6 +62,8 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
     private FirebaseAuth mAuth;
     private FirebaseUser currentUser;
     DatabaseReference CustomerDatabaseReference;
+    DatabaseReference DriversAvailableRef;
+    DatabaseReference DriversRef;
     DatabaseReference DriversLocationRef;
 
     @Override
@@ -70,7 +79,8 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
         currentUser = mAuth.getCurrentUser();
         customerID = FirebaseAuth.getInstance().getCurrentUser().getUid();
         CustomerDatabaseReference = FirebaseDatabase.getInstance().getReference().child("Customers Requests"); //Обращение напрямую к конкретной полочке в Базе данных
-        DriversLocationRef = FirebaseDatabase.getInstance().getReference().child("Driver Available"); //Создаем переменную для получения Локации всех водителей
+        DriversAvailableRef = FirebaseDatabase.getInstance().getReference().child("Driver Available"); //Создаем переменную для получения Локации всех водителей
+        DriversLocationRef = FirebaseDatabase.getInstance().getReference().child("Driver Working"); //Водитель принял заказ и он уже в работе
 
 
 
@@ -182,7 +192,7 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
 
     //Метод для поиска водителей поблизости
     private void getNearbyDrivers() {
-        GeoFire geoFire = new GeoFire(DriversLocationRef);
+        GeoFire geoFire = new GeoFire(DriversAvailableRef);
         GeoQuery geoQuery = geoFire.queryAtLocation(new GeoLocation(CustomerPosition.latitude, CustomerPosition.longitude), radius);
         geoQuery.removeAllListeners();
 
@@ -193,6 +203,14 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
                 if(!driverFound){
                     driverFound = true;
                     driverFoundID = key;
+
+                    DriversRef = FirebaseDatabase.getInstance().getReference().child("Users").child("Drivers").child(driverFoundID);
+                    HashMap driverMap = new HashMap();
+                    driverMap.put("CustomerRideID", customerID);
+                    DriversRef.updateChildren(driverMap);
+                    //Привязка водителя к заказчику после нахождения
+
+                    GetDriverLocation();
                 }
             }
 
@@ -220,5 +238,60 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
 
             }
         });
+    }
+
+    private void GetDriverLocation() {
+        //Получить данные о геолокаци водителя
+        DriversLocationRef.child(driverFoundID).child("l").
+                addValueEventListener(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        if (snapshot.exists()){
+                            List<Object> driverLocationMap = (List<Object>) snapshot.getValue();
+                            double LocationLat = 0;
+                            double LocationLng = 0;
+                            callTaxiButton.setText("Водитель найден!");
+                            //Тут необходимо добавить диалоговое окно с информацие о водителе.
+
+                            if (driverLocationMap.get(0) != null){
+                                LocationLat = Double.parseDouble(driverLocationMap.get(0).toString());
+
+                            }
+                            if (driverLocationMap.get(1) != null){
+                                LocationLng = Double.parseDouble(driverLocationMap.get(1).toString());
+                            }
+
+                            LatLng DriverLatLng = new LatLng(LocationLat, LocationLng);
+
+                            if(driverMarker != null) { //Удалим лишних водителей
+                                driverMarker.remove();
+
+                            }
+
+                            //Определим расстояние между таксистом и заказчиком
+                            Location location1 = new Location(""); //Позиция водителя
+                            location1.setLatitude(DriverLatLng.latitude);
+                            location1.setLongitude(DriverLatLng.longitude);
+
+                            Location location2 = new Location(""); //Позиция заказчика
+                            location2.setLatitude(CustomerPosition.latitude);
+                            location2.setLongitude(CustomerPosition.longitude);
+
+                            float Distance = location1.distanceTo(location2); //Определение расстояния по гугл локации
+                            callTaxiButton.setText("Расстояние до такси" + String.valueOf(Distance));
+
+                            driverMarker = mMap.addMarker(new MarkerOptions().position(DriverLatLng).title("Ваше такси тут"));
+
+                         }
+
+
+
+                    }
+
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError error) {
+
+                    }
+                });
     }
 }
