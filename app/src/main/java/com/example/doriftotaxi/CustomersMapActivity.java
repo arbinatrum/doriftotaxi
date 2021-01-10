@@ -13,6 +13,10 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
 
+import com.firebase.geofire.GeoFire;
+import com.firebase.geofire.GeoLocation;
+import com.firebase.geofire.GeoQuery;
+import com.firebase.geofire.GeoQueryEventListener;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.location.LocationRequest;
@@ -26,6 +30,9 @@ import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
 
 public class CustomersMapActivity extends FragmentActivity implements OnMapReadyCallback,
         GoogleApiClient.ConnectionCallbacks,
@@ -39,9 +46,16 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
 
     Button customerLogoutButton;
     Button callTaxiButton;
+    String customerID;
+    LatLng CustomerPosition;
+    int radius = 1;
+    Boolean driverFound = false;
+    String driverFoundID;
 
     private FirebaseAuth mAuth;
     private FirebaseUser currentUser;
+    DatabaseReference CustomerDatabaseReference;
+    DatabaseReference DriversLocationRef;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -51,8 +65,14 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
 
         customerLogoutButton = (Button) findViewById(R.id.customer_logout_button);
         callTaxiButton = (Button) findViewById(R.id.customer_order_button);
+
         mAuth = FirebaseAuth.getInstance();
         currentUser = mAuth.getCurrentUser();
+        customerID = FirebaseAuth.getInstance().getCurrentUser().getUid();
+        CustomerDatabaseReference = FirebaseDatabase.getInstance().getReference().child("Customers Requests"); //Обращение напрямую к конкретной полочке в Базе данных
+        DriversLocationRef = FirebaseDatabase.getInstance().getReference().child("Driver Available"); //Создаем переменную для получения Локации всех водителей
+
+
 
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
@@ -66,7 +86,23 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
                  LogoutCustomer();
             }
         });
+
+        callTaxiButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                GeoFire geoFire = new GeoFire(CustomerDatabaseReference);
+                geoFire.setLocation(customerID, new GeoLocation(lastLocation.getLatitude(), lastLocation.getLongitude()));
+
+                //Установка геопозиции заказчика
+                CustomerPosition = new LatLng(lastLocation.getLatitude(), lastLocation.getLongitude());
+                mMap.addMarker(new MarkerOptions().position(CustomerPosition).title("Я нахожусь здесь"));
+
+                callTaxiButton.setText("Поис такси...");
+                getNearbyDrivers();
+            }
+        });
     }
+
 
 
 
@@ -137,9 +173,52 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
         super.onStop();
     }
 
+    //Выходим на начальный экран и выполняем логаут для Заказчика
     private void LogoutCustomer() {
         Intent welcomeIntent = new Intent(CustomersMapActivity.this, WelcomeActivity.class);
         startActivity(welcomeIntent);
         finish();
+    }
+
+    //Метод для поиска водителей поблизости
+    private void getNearbyDrivers() {
+        GeoFire geoFire = new GeoFire(DriversLocationRef);
+        GeoQuery geoQuery = geoFire.queryAtLocation(new GeoLocation(CustomerPosition.latitude, CustomerPosition.longitude), radius);
+        geoQuery.removeAllListeners();
+
+
+        geoQuery.addGeoQueryEventListener(new GeoQueryEventListener() {
+            @Override
+            public void onKeyEntered(String key, GeoLocation location) {
+                if(!driverFound){
+                    driverFound = true;
+                    driverFoundID = key;
+                }
+            }
+
+            @Override
+            public void onKeyExited(String key) {
+
+            }
+
+            @Override
+            public void onKeyMoved(String key, GeoLocation location) {
+
+            }
+
+            @Override
+            public void onGeoQueryReady() {
+                //Если водитель не найден, то увеличиваем радиус
+                if(!driverFound){
+                    radius = radius + 1;
+                    getNearbyDrivers();
+                }
+            }
+
+            @Override
+            public void onGeoQueryError(DatabaseError error) {
+
+            }
+        });
     }
 }

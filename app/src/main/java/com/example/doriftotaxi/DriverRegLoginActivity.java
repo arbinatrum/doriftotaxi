@@ -18,6 +18,8 @@ import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
 
 public class DriverRegLoginActivity extends AppCompatActivity {
 
@@ -26,8 +28,12 @@ public class DriverRegLoginActivity extends AppCompatActivity {
     EditText emailET, passwordET;
 
 
-    FirebaseUser currentUser;
     FirebaseAuth mAuth;
+    FirebaseUser currentUser;
+    DatabaseReference DriverDatabaseRef;
+    String OnlineDriverID;
+
+
     ProgressDialog loadingBar;
 
     @Override
@@ -135,10 +141,18 @@ public class DriverRegLoginActivity extends AppCompatActivity {
         @Override
         public void onComplete(@NonNull Task<AuthResult> task) {
             if(task.isSuccessful()){
-                Toast.makeText(DriverRegLoginActivity.this, "Регистрация прошла успешно", Toast.LENGTH_SHORT).show();
-                loadingBar.dismiss();
+
+                OnlineDriverID = mAuth.getCurrentUser().getUid();
+                DriverDatabaseRef = FirebaseDatabase.getInstance().getReference().
+                        child("Users").child("Drivers").child(OnlineDriverID);
+                DriverDatabaseRef.setValue(true); //Помещение информации о заказчике в отдельную папку Users->Drivers со своими данными
+
+
                 Intent driverIntent = new Intent(DriverRegLoginActivity.this, DriversMapActivity.class);
                 startActivity(driverIntent);
+
+                Toast.makeText(DriverRegLoginActivity.this, "Регистрация прошла успешно", Toast.LENGTH_SHORT).show();
+                loadingBar.dismiss();
             }
             else{
                 Toast.makeText(DriverRegLoginActivity.this, "Ошибка Регистрации", Toast.LENGTH_SHORT).show();

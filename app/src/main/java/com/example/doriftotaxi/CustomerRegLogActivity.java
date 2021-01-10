@@ -17,6 +17,8 @@ import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
 
 public class CustomerRegLogActivity extends AppCompatActivity {
 
@@ -26,6 +28,10 @@ public class CustomerRegLogActivity extends AppCompatActivity {
 
     FirebaseUser currentUser;
     FirebaseAuth mAuth;
+    DatabaseReference CustomerDatabaseRef;
+    String OnlineCustomerID;
+
+
     ProgressDialog loadingBar;
 
     @Override
@@ -41,6 +47,7 @@ public class CustomerRegLogActivity extends AppCompatActivity {
         passwordET = (EditText)findViewById(R.id.customerPassword);
 
         mAuth = FirebaseAuth.getInstance();
+
         loadingBar = new ProgressDialog(this);
 
         signUpBtn.setVisibility(View.INVISIBLE);
@@ -113,10 +120,16 @@ public class CustomerRegLogActivity extends AppCompatActivity {
             @Override
             public void onComplete(@NonNull Task<AuthResult> task) {
                 if(task.isSuccessful()){
-                    Toast.makeText(CustomerRegLogActivity.this, "Регистрация прошла успешно", Toast.LENGTH_SHORT).show();
-                    loadingBar.dismiss();
+                    OnlineCustomerID = mAuth.getCurrentUser().getUid();
+                    CustomerDatabaseRef = FirebaseDatabase.getInstance().getReference().
+                            child("Users").child("Customers").child(OnlineCustomerID);
+                    CustomerDatabaseRef.setValue(true); //Помещение информации о заказчике в отдельную папку Users->Customers со своими данными
+
                     Intent customerIntent = new Intent(CustomerRegLogActivity.this, CustomersMapActivity.class);
                     startActivity(customerIntent);
+
+                    Toast.makeText(CustomerRegLogActivity.this, "Регистрация прошла успешно", Toast.LENGTH_SHORT).show();
+                    loadingBar.dismiss();
                 }
                 else{
                     Toast.makeText(CustomerRegLogActivity.this, "Ошибка Регистрации", Toast.LENGTH_SHORT).show();
