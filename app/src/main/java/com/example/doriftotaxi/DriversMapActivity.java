@@ -7,12 +7,17 @@ import androidx.core.content.ContextCompat;
 import androidx.fragment.app.FragmentActivity;
 
 import android.Manifest;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Location;
+import android.location.LocationManager;
+import android.os.Build;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.view.View;
 import android.widget.Button;
+import android.widget.Toast;
 
 import com.firebase.geofire.GeoFire;
 import com.firebase.geofire.GeoLocation;
@@ -38,6 +43,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
+import static java.lang.Thread.sleep;
+
 public class DriversMapActivity extends FragmentActivity implements OnMapReadyCallback,
         GoogleApiClient.ConnectionCallbacks,
         GoogleApiClient.OnConnectionFailedListener,
@@ -45,8 +52,9 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
 
     private GoogleMap mMap;
     GoogleApiClient googleApiClient;
-    Location lastLocation;
+    Location lastLocation, FirstLocation;
     LocationRequest locationRequest;
+    LocationManager locationManager;
 
     private String driverID, customerID = "";
     private Button DriverApprovedButton;
@@ -72,6 +80,8 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
         driverID = mAuth.getCurrentUser().getUid();
         DriverDatabaseRef = FirebaseDatabase.getInstance().getReference().child("Driver Available");
 
+        locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
         assert mapFragment != null;
@@ -92,7 +102,6 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
                 updateLocationUser();
                 DriverApprovedButton.setVisibility(View.INVISIBLE);
                 DriverApprovedButton.setEnabled(false);
-                mMap.animateCamera(CameraUpdateFactory.zoomTo(15));
             }
         });
 
@@ -121,7 +130,6 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
             return;
         }
         mMap.setMyLocationEnabled(true);
-
     }
 
     @Override
@@ -139,7 +147,6 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
 
     @Override
     public void onConnectionSuspended(int i) {
-
     }
 
     @Override
@@ -154,11 +161,15 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
 
             //Мое месторасположение
             LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
-            mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
-            mMap.animateCamera(CameraUpdateFactory.zoomTo(12));
-
+            showLocation(latLng);
             if (!DriverApprovedButton.isEnabled()) updateLocationUser();
         }
+    }
+
+    //Метод обновления камеры вынесен отдельно
+    private void showLocation(LatLng LatLng) {
+        mMap.moveCamera(CameraUpdateFactory.newLatLng(LatLng));
+        mMap.animateCamera(CameraUpdateFactory.zoomTo(12));
     }
 
 
@@ -258,7 +269,6 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
 
                     if (customerPosition.get(0) != null) {
                         LocationLat = Double.parseDouble(customerPosition.get(0).toString());
-
                     }
                     if (customerPosition.get(1) != null) {
                         LocationLng = Double.parseDouble(customerPosition.get(1).toString());

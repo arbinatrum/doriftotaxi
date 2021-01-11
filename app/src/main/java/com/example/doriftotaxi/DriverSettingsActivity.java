@@ -48,12 +48,19 @@ public class DriverSettingsActivity extends AppCompatActivity {
         backBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if(getType.equals("Drivers")){
-                    startActivity(new Intent(DriverSettingsActivity.this, DriversMapActivity.class));
-                }
+                startActivity(new Intent(DriverSettingsActivity.this, WelcomeActivity.class));
+                /*if(getType.equals("Drivers")){
+
+                }*/
                 //else{ Toast.makeText(DriverSettingsActivity.this, "Неизвестная ошибка", Toast.LENGTH_SHORT).show();}
             }
         });
 
+        saveBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                startActivity(new Intent(DriverSettingsActivity.this, MainActivity.class));
+            }
+        });
     }
 }

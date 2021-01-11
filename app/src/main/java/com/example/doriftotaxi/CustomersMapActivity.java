@@ -88,6 +88,8 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
                 .findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
 
+        //Здесь необходимо боавить новый метод на запрос включения GPS
+
         customerLogoutButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -100,6 +102,7 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
         callTaxiButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                //Здесь также необходимо боавить новый метод на запрос включения GPS, если все таки пользователь включил GPS и предоставил доступы к приложению, то выполняем код ниже
                 GeoFire geoFire = new GeoFire(CustomerDatabaseReference);
                 geoFire.setLocation(customerID, new GeoLocation(lastLocation.getLatitude(), lastLocation.getLongitude()));
 
@@ -107,24 +110,14 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
                 CustomerPosition = new LatLng(lastLocation.getLatitude(), lastLocation.getLongitude());
                 mMap.addMarker(new MarkerOptions().position(CustomerPosition).title("Я нахожусь здесь"));
 
+                mMap.moveCamera(CameraUpdateFactory.newLatLng(CustomerPosition));
+                mMap.animateCamera(CameraUpdateFactory.zoomTo(12));
                 callTaxiButton.setText("Поис такси...");
                 getNearbyDrivers();
             }
         });
     }
 
-
-
-
-    /**
-     * Manipulates the map once available.
-     * This callback is triggered when the map is ready to be used.
-     * This is where we can add markers or lines, add listeners or move the camera. In this case,
-     * we just add a marker near Sydney, Australia.
-     * If Google Play services is not installed on the device, the user will be prompted to install
-     * it inside the SupportMapFragment. This method will only be triggered once the user has
-     * installed Google Play services and returned to the app.
-     */
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
@@ -174,7 +167,12 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
         lastLocation = location;
 
         LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
-        mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
+        showLocation(latLng);
+    }
+
+    //Метод обновления камеры вынесен отдельно
+    private void showLocation(LatLng LatLng) {
+        mMap.moveCamera(CameraUpdateFactory.newLatLng(LatLng));
         mMap.animateCamera(CameraUpdateFactory.zoomTo(12));
     }
 
