@@ -72,7 +72,7 @@ public class DriverSettingsActivity extends AppCompatActivity {
         backBtn = findViewById(R.id.close_btn);
         imageChangeBtn = findViewById(R.id.change_photo_btn);
         mAuth = FirebaseAuth.getInstance();
-        databaseReference = FirebaseDatabase.getInstance().getReference().child("Users").child("Drivers");
+        databaseReference = FirebaseDatabase.getInstance().getReference().child("Users").child(getType);
 
         storageProfileImageRef = FirebaseStorage.getInstance().getReference().child("Profile Pictures");
 
@@ -119,6 +119,8 @@ public class DriverSettingsActivity extends AppCompatActivity {
                 CropImage.activity().setAspectRatio(1,1).start(DriverSettingsActivity.this);
             }
         });
+
+        getUserInformation();
     }
 
     @Override
@@ -138,8 +140,6 @@ public class DriverSettingsActivity extends AppCompatActivity {
             }
             Toast.makeText(this, "Произошла ошибка", Toast.LENGTH_SHORT).show();
         }
-
-        getUserInformation();
     }
 
     private void ValidateControllers(){
@@ -156,6 +156,9 @@ public class DriverSettingsActivity extends AppCompatActivity {
             else if (TextUtils.isEmpty(carNumberET.getText().toString())) {
                 Toast.makeText(this, "Заполните поле Номер машины", Toast.LENGTH_SHORT).show();
             }
+            else if(checker.equals("clicked")){
+                uploadProfileImage();
+            }
         }else {
             if (TextUtils.isEmpty(nameET.getText().toString())) {
                 Toast.makeText(this, "Заполните поле Имя", Toast.LENGTH_SHORT).show();
@@ -163,10 +166,6 @@ public class DriverSettingsActivity extends AppCompatActivity {
             else if (TextUtils.isEmpty(phoneET.getText().toString())) {
                 Toast.makeText(this, "Заполните поле Номер телефона", Toast.LENGTH_SHORT).show();
             }
-            else if(checker.equals("clicked")){
-                uploadProfileImage();
-            }
-
         }
 
     }
@@ -203,8 +202,8 @@ public class DriverSettingsActivity extends AppCompatActivity {
 
 
                      if(getType.equals("Drivers")){
-                         userMap.put("car model", carET.getText().toString());
-                         userMap.put("car number", carNumberET.getText().toString());
+                         userMap.put("carmodel", carET.getText().toString());
+                         userMap.put("carnumber", carNumberET.getText().toString());
                          userMap.put("image", myUrl);
                      }
 
@@ -254,8 +253,8 @@ public class DriverSettingsActivity extends AppCompatActivity {
 
 
                 if (getType.equals("Drivers")) {
-                    userMap.put("car model", carET.getText().toString());
-                    userMap.put("car number", carNumberET.getText().toString());
+                    userMap.put("carmodel", carET.getText().toString());
+                    userMap.put("carnumber", carNumberET.getText().toString());
                 }
 
                 databaseReference.child(mAuth.getCurrentUser().getUid()).updateChildren(userMap);
@@ -280,8 +279,8 @@ public class DriverSettingsActivity extends AppCompatActivity {
                     nameET.setText(name);
                     phoneET.setText(phone);
                     if (getType.equals("Drivers")) {
-                        String carmodel = snapshot.child("car model").getValue().toString();
-                        String carnumber = snapshot.child("car number").getValue().toString();
+                        String carmodel = snapshot.child("carmodel").getValue().toString();
+                        String carnumber = snapshot.child("carnumber").getValue().toString();
                         carET.setText(carmodel);
                         carNumberET.setText(carnumber);
 
