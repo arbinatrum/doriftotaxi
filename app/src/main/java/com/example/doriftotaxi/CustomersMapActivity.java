@@ -25,6 +25,8 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.BitmapDescriptor;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
@@ -49,14 +51,15 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
     GoogleApiClient googleApiClient;
     Location lastLocation;
     LocationRequest locationRequest;
-    Marker driverMarker;
+    Marker driverMarker, PickUpMarker;
+    GeoQuery geoQuery;
 
-    Button customerLogoutButton;
+    Button customerLogoutButton, settingsButton;
     Button callTaxiButton;
     String customerID;
     LatLng CustomerPosition;
     int radius = 1;
-    Boolean driverFound = false;
+    Boolean driverFound = false, requestType, status = true;
     String driverFoundID;
 
     private FirebaseAuth mAuth;
@@ -66,6 +69,8 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
     DatabaseReference DriversRef;
     DatabaseReference DriversLocationRef;
 
+    private ValueEventListener DriverLocationRefListener;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -73,6 +78,7 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
 
 
         customerLogoutButton = (Button) findViewById(R.id.customer_logout_button);
+        settingsButton = (Button) findViewById(R.id.customer_settings_button);
         callTaxiButton = (Button) findViewById(R.id.customer_order_button);
 
         mAuth = FirebaseAuth.getInstance();
@@ -99,21 +105,59 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
             }
         });
 
+        settingsButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(CustomersMapActivity.this, DriverSettingsActivity.class);
+                intent.putExtra("type", "Customers");
+                startActivity(intent);
+            }
+        });
+
         callTaxiButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 //Здесь также необходимо боавить новый метод на запрос включения GPS, если все таки пользователь включил GPS и предоставил доступы к приложению, то выполняем код ниже
-                GeoFire geoFire = new GeoFire(CustomerDatabaseReference);
-                geoFire.setLocation(customerID, new GeoLocation(lastLocation.getLatitude(), lastLocation.getLongitude()));
+                if(requestType){
+                    requestType = false;
+                    geoQuery.removeAllListeners();
+                    DriversLocationRef.removeEventListener(DriverLocationRefListener);
+                    if(driverFound != null){
+                        DriversRef = FirebaseDatabase.getInstance().getReference()
+                                .child("Users").child("Drivers").child(driverFoundID).child("CustomerRideID");
+                        DriversRef.removeValue();
+                        driverFoundID = null;
+                    }
+                    driverFound = false;
+                    radius = 1;
 
-                //Установка геопозиции заказчика
-                CustomerPosition = new LatLng(lastLocation.getLatitude(), lastLocation.getLongitude());
-                mMap.addMarker(new MarkerOptions().position(CustomerPosition).title("Я нахожусь здесь"));
+                    GeoFire geoFire = new GeoFire(CustomerDatabaseReference);
+                    geoFire.removeLocation(customerID);
 
-                mMap.moveCamera(CameraUpdateFactory.newLatLng(CustomerPosition));
-                mMap.animateCamera(CameraUpdateFactory.zoomTo(12));
-                callTaxiButton.setText("Поис такси...");
-                getNearbyDrivers();
+                    if(PickUpMarker != null){
+                        PickUpMarker.remove();
+                    }
+
+                    if(driverMarker != null){
+                        driverMarker.remove();
+                    }
+
+                    callTaxiButton.setText("Вызвать такси");
+                }
+                else {
+
+                    GeoFire geoFire = new GeoFire(CustomerDatabaseReference);
+                    geoFire.setLocation(customerID, new GeoLocation(lastLocation.getLatitude(), lastLocation.getLongitude()));
+
+                    //Установка геопозиции заказчика
+                    CustomerPosition = new LatLng(lastLocation.getLatitude(), lastLocation.getLongitude());
+                    PickUpMarker = mMap.addMarker(new MarkerOptions().position(CustomerPosition).title("Я нахожусь здесь"));
+
+                    showLocation(lastLocation, 5);
+
+                    callTaxiButton.setText("Поиск такси...");
+                    getNearbyDrivers();
+                }
             }
         });
     }
@@ -166,14 +210,26 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
     public void onLocationChanged(Location location) {
         lastLocation = location;
 
-        LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
-        showLocation(latLng);
+
+        if(status){
+            showLocation(lastLocation, 12);
+        }
+        status = false;
     }
 
     //Метод обновления камеры вынесен отдельно
-    private void showLocation(LatLng LatLng) {
-        mMap.moveCamera(CameraUpdateFactory.newLatLng(LatLng));
-        mMap.animateCamera(CameraUpdateFactory.zoomTo(12));
+    private void showLocation(Location location, int zoomSide) {
+        LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
+
+        mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
+        mMap.animateCamera(CameraUpdateFactory.zoomTo(zoomSide));
+    }
+
+    private void showLocation(Marker Marker, int zoomSide) {
+        LatLng latLng = new LatLng(Marker.getPosition().latitude, Marker.getPosition().longitude);
+
+        mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
+        mMap.animateCamera(CameraUpdateFactory.zoomTo(zoomSide));
     }
 
     @Override
@@ -198,7 +254,7 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
         geoQuery.addGeoQueryEventListener(new GeoQueryEventListener() {
             @Override
             public void onKeyEntered(String key, GeoLocation location) {
-                if(!driverFound){
+                if(!driverFound && requestType){
                     driverFound = true;
                     driverFoundID = key;
 
@@ -240,11 +296,11 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
 
     private void GetDriverLocation() {
         //Получить данные о геолокаци водителя
-        DriversLocationRef.child(driverFoundID).child("l").
+        DriverLocationRefListener = DriversLocationRef.child(driverFoundID).child("l").
                 addValueEventListener(new ValueEventListener() {
                     @Override
                     public void onDataChange(@NonNull DataSnapshot snapshot) {
-                        if (snapshot.exists()){
+                        if (snapshot.exists() && requestType){
                             List<Object> driverLocationMap = (List<Object>) snapshot.getValue();
                             double LocationLat = 0;
                             double LocationLng = 0;
@@ -276,14 +332,20 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
                             location2.setLongitude(CustomerPosition.longitude);
 
                             float Distance = location1.distanceTo(location2); //Определение расстояния по гугл локации
-                            callTaxiButton.setText("Расстояние до такси" + String.valueOf(Distance));
 
-                            driverMarker = mMap.addMarker(new MarkerOptions().position(DriverLatLng).title("Ваше такси тут"));
+                            if (Distance < 100){
+                                callTaxiButton.setText("Ваше такси подъезжает");
+                            }
+                            else {
+                                callTaxiButton.setText("Такси в пути");
+                            }
+
+
+                            driverMarker = mMap.addMarker(new MarkerOptions().position(DriverLatLng)
+                                    .title("Ваше такси тут").icon(BitmapDescriptorFactory.fromResource(R.drawable.car)));
+                            showLocation(driverMarker, 12);
 
                          }
-
-
-
                     }
 
                     @Override

@@ -39,12 +39,11 @@
         android:id="@+id/search_button"
         android:layout_width="match_parent"
         android:layout_height="50dp"
-        android:text="Начать поиск"
-        android:background="@drawable/welcome_button"
-        android:textSize="17sp"
-        android:textAllCaps="false"
         android:layout_margin="15dp"
-        />
+        android:background="@drawable/welcome_button"
+        android:text="Начать поиск"
+        android:textAllCaps="false"
+        android:textSize="17sp" />
 
 
 </LinearLayout>

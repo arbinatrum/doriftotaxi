@@ -14,6 +14,8 @@
         android:layout_below="@+id/statusCustomer"
         android:layout_marginTop="10dp"
         android:layout_centerHorizontal="true"
+        android:background="@drawable/edit_text_shape"
+        android:padding="15dp"
         android:ems="10"
         android:hint="@string/email"
         android:inputType="textEmailAddress" />
@@ -23,6 +25,8 @@
         android:layout_width="250dp"
         android:layout_height="wrap_content"
         android:layout_below="@+id/customerEmail"
+        android:background="@drawable/edit_text_shape"
+        android:padding="15dp"
         android:layout_marginTop="10dp"
         android:layout_centerHorizontal="true"
         android:ems="10"
@@ -36,11 +40,14 @@
         android:layout_below="@+id/customerPassword"
         android:layout_centerHorizontal="true"
         android:layout_marginTop="10dp"
-        android:background="@android:color/holo_green_light"
         android:text="@string/signIn"
         android:textSize="16sp"
         android:textStyle="bold"
-        android:textAllCaps="false"/>
+        android:textAllCaps="false"
+        android:textColor="@android:color/black"
+        android:background="@drawable/welcome_button"
+        android:padding="15dp"
+        />
 
     <Button
         android:id="@+id/signUpCustomer"
@@ -53,7 +60,8 @@
         android:textSize="16sp"
         android:textStyle="bold"
         android:textAllCaps="false"
-        android:background="@android:color/white"/>
+        android:background="@drawable/edit_text_shape"
+        android:padding="10dp"/>
 
     <TextView
         android:id="@+id/statusCustomer"

@@ -86,7 +86,12 @@ public class DriverRegLoginActivity extends AppCompatActivity {
                 String email = emailET.getText().toString();
                 String password = passwordET.getText().toString();
 
-                SignInDriver(email, password);
+                if(email == "" || password == ""){
+                    Toast.makeText(DriverRegLoginActivity.this, "Введите корректные данные",Toast.LENGTH_SHORT).show();
+                }
+                else {
+                    SignInDriver(email, password);
+                }
             }
         });
     }

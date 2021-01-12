@@ -30,6 +30,7 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -55,6 +56,7 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
     Location lastLocation, FirstLocation;
     LocationRequest locationRequest;
     LocationManager locationManager;
+    Marker PickUpMarker;
 
     private String driverID, customerID = "";
     private Button DriverApprovedButton;
@@ -62,9 +64,12 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
     private FirebaseUser currentUser;
     private DatabaseReference DriverDatabaseRef;
     private LatLng DriverPosition;
+    private boolean status = true;
 
-    private Boolean currentLogoutDriverStatus;
+    private Boolean currentLogoutDriverStatus = false;
     private DatabaseReference assignedCustomerRef, AssignedCustomerPosition;
+
+    private ValueEventListener AssignedCustomerPositionListener;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -102,6 +107,7 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
                 updateLocationUser();
                 DriverApprovedButton.setVisibility(View.INVISIBLE);
                 DriverApprovedButton.setEnabled(false);
+                showLocation(lastLocation, 5);
             }
         });
 
@@ -160,18 +166,21 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
             lastLocation = location;
 
             //Мое месторасположение
-            LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
-            showLocation(latLng);
+            if(status) {
+                status = false;
+                showLocation(lastLocation, 12);
+            }
             if (!DriverApprovedButton.isEnabled()) updateLocationUser();
         }
     }
 
     //Метод обновления камеры вынесен отдельно
-    private void showLocation(LatLng LatLng) {
-        mMap.moveCamera(CameraUpdateFactory.newLatLng(LatLng));
-        mMap.animateCamera(CameraUpdateFactory.zoomTo(12));
-    }
+    private void showLocation(Location location, int zoomSide) {
+        LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
 
+        mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
+        mMap.animateCamera(CameraUpdateFactory.zoomTo(zoomSide));
+    }
 
 
     protected synchronized void buildGoogleApiClient(){
@@ -245,6 +254,18 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
 
                     getAssignedCustomerPosition();
                 }
+                else {
+                    customerID = "";
+
+                    if(PickUpMarker != null){
+                        PickUpMarker.remove();
+                    }
+
+                    if(AssignedCustomerPositionListener != null){
+                        AssignedCustomerPosition.removeEventListener(AssignedCustomerPositionListener);
+                    }
+
+                }
             }
 
             @Override
@@ -258,7 +279,7 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
         AssignedCustomerPosition = FirebaseDatabase.getInstance().getReference().child("Customer Requests")
                 .child(customerID).child("l");
 
-        AssignedCustomerPosition.addValueEventListener(new ValueEventListener() {
+        AssignedCustomerPositionListener = AssignedCustomerPosition.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 if (snapshot.exists()) {
@@ -276,7 +297,7 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
 
                     LatLng DriverLatLng = new LatLng(LocationLat, LocationLng);
 
-                    mMap.addMarker(new MarkerOptions().position(DriverLatLng).title("Забрать заказчика тут"));
+                    PickUpMarker = mMap.addMarker(new MarkerOptions().position(DriverLatLng).title("Забрать заказчика тут"));
                 }
             }
 
