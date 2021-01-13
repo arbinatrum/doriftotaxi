@@ -22,10 +22,25 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
 
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
+
+import java.util.HashMap;
+
 public class WelcomeActivity extends AppCompatActivity {
 
     Button driverBtn, customerBtn;
-    private Location lastLocation;
+
+    /*private FirebaseAuth mAuth;
+    private FirebaseUser CurrentUser;
+    private DatabaseReference databaseReference;*/
+
+
 
 
     @Override
@@ -33,8 +48,7 @@ public class WelcomeActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_welcome);
 
-
-
+        //initialize();
         driverBtn = (Button) findViewById(R.id.driverBtn);
         customerBtn = (Button) findViewById(R.id.customerBtn);
 
@@ -57,8 +71,37 @@ public class WelcomeActivity extends AppCompatActivity {
             }
         });
 
-        init();
+        /*if(CurrentUser != null){
+
+        }
+
+        init();*/
     }
+
+    /*private void openMap() {
+        databaseReference.child("Customers").addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                if(snapshot.child(mAuth.getCurrentUser().getUid()).exists()){
+                    startActivity(new Intent(WelcomeActivity.this, CustomersMapActivity.class));
+                }
+                else {
+                    startActivity(new Intent(WelcomeActivity.this, DriversMapActivity.class));
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+
+            }
+        });
+    }
+
+    private void initialize() {
+        mAuth = FirebaseAuth.getInstance();
+        CurrentUser = mAuth.getCurrentUser();
+        databaseReference = FirebaseDatabase.getInstance().getReference().child("Users");
+    }*/
 
     private void init() {
         LocationManager locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
@@ -76,4 +119,15 @@ public class WelcomeActivity extends AppCompatActivity {
             requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION}, 100);
         }
     }
+
+    /*private void getStatusAuth(){
+        DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference()
+                .child("Users")
+                .child("Drivers")
+                .child(mAuth.getCurrentUser().getUid()).;
+        databaseReference.child(mAuth.getCurrentUser().getUid()).updateChildren(userMap);
+
+
+        openMap();
+    }*/
 }

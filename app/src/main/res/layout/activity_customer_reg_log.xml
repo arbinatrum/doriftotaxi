@@ -18,7 +18,9 @@
         android:padding="15dp"
         android:ems="10"
         android:hint="@string/email"
-        android:inputType="textEmailAddress" />
+        android:inputType="textEmailAddress"
+        android:singleLine="true"
+        />
 
     <EditText
         android:id="@+id/customerPassword"
@@ -31,7 +33,9 @@
         android:layout_centerHorizontal="true"
         android:ems="10"
         android:hint="@string/password"
-        android:inputType="textPassword" />
+        android:inputType="textPassword"
+        android:singleLine="true"
+        />
 
     <Button
         android:id="@+id/signInCustomer"

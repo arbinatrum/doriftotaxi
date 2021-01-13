@@ -31,6 +31,105 @@
         android:layout_margin="5dp"
         android:text="Выйти"
         android:layout_alignParentEnd="true"/>
+    
+    <LinearLayout
+        android:id="@+id/relLayoutCustomer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:orientation="vertical"
+        >
+
+        <RelativeLayout
+            android:id="@+id/rel_info"
+            android:layout_width="match_parent"
+            android:layout_height="150dp"
+            android:layout_above="@id/infoBtn"
+            android:layout_margin="7dp"
+            android:background="@drawable/edit_text_shape"
+            android:backgroundTint="@android:color/white"
+            >
+
+            <RelativeLayout
+                android:id="@+id/rel_upper"
+                android:layout_width="match_parent"
+                android:layout_height="35dp"
+                android:background="@drawable/info_block">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="25dp"
+                    android:gravity="center"
+                    android:layout_centerVertical="true"
+                    android:text="Информация о таксисте"
+                    android:textColor="@android:color/black"
+                    android:layout_centerInParent="true"
+                    />
+
+            </RelativeLayout>
+
+            <de.hdodenhof.circleimageview.CircleImageView
+                android:id="@+id/driver_photo"
+                android:layout_width="100dp"
+                android:layout_height="100dp"
+                android:layout_marginTop="40dp"
+                android:layout_marginLeft="40dp"
+                android:src="@drawable/profile"
+                android:layout_centerHorizontal="true"
+                android:layout_alignParentStart="true"
+                />
+
+            <TextView
+                android:id="@+id/driver_name"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_toEndOf="@id/driver_photo"
+                android:layout_below="@id/rel_upper"
+                android:layout_marginTop="20dp"
+                android:layout_marginLeft="20dp"
+                android:textSize="16sp"
+                android:text="Имя Водителя"
+                android:singleLine="true"
+                />
+
+            <TextView
+                android:id="@+id/driver_phone"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_toEndOf="@id/driver_photo"
+                android:layout_below="@id/driver_name"
+                android:layout_marginTop="5dp"
+                android:layout_marginLeft="20dp"
+                android:textSize="16sp"
+                android:text="Номер телефона"
+                android:singleLine="true"
+                />
+
+            <TextView
+                android:id="@+id/driver_car"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_toEndOf="@id/driver_photo"
+                android:layout_below="@id/driver_phone"
+                android:layout_marginTop="5dp"
+                android:layout_marginLeft="20dp"
+                android:textSize="16sp"
+                android:text="Модель + номер машины"
+                android:singleLine="true"
+                />
+        </RelativeLayout>
+
+
+        <Button
+            android:layout_width="match_parent"
+            android:layout_height="70dp"
+            android:id="@+id/infoBtn"
+            android:background="@drawable/welcome_button"
+            android:text="Информация о такси"
+            />
+
+
+    </LinearLayout>
 
     <androidx.coordinatorlayout.widget.CoordinatorLayout
         android:layout_width="match_parent"
@@ -38,77 +137,9 @@
         android:layout_alignParentBottom="true"
         >
 
-
-    <FrameLayout
-        android:id="@+id/bottom_sheet"
-        android:layout_width="match_parent"
-        android:layout_height="320dp"
-        android:background="@drawable/bottom_sheet_background"
-        app:layout_behavior="com.google.android.material.bottomsheet.BottomSheetBehavior">
-
-
-        <ImageView
-            android:layout_width="match_parent"
-            android:layout_height="15dp"
-            android:src="@drawable/ic_baseline_remove"
-            android:layout_gravity="center|top"
-            android:layout_margin="5dp">
-        </ImageView>
-
-        <LinearLayout
-            android:id="@+id/bottomSheetContainer"
-            android:orientation="vertical" android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:layout_marginTop="15dp"
-            >
-
-            <EditText
-                android:id="@+id/search_bar_A"
-                android:layout_width="match_parent"
-                android:layout_height="50dp"
-                android:background="@drawable/edit_text_shape"
-                android:hint="Введите ваш Адрес"
-                android:layout_margin="10dp"
-                android:padding="15dp"
-                />
-
-            <EditText
-                android:id="@+id/search_bar_B"
-                android:layout_width="match_parent"
-                android:layout_height="50dp"
-                android:background="@drawable/edit_text_shape"
-                android:hint="Введите адрес назначения"
-                android:layout_margin="10dp"
-                android:padding="15dp"
-                />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="50dp"
-                android:background="@drawable/info_block"
-                android:textColor="@color/colorPrimaryDark"
-                android:text="Стоимость поездки "
-                android:layout_margin="10dp"
-                android:padding="15dp"
-                android:textSize="17sp"
-                />
-
-            <Button
-                android:id="@+id/customer_order_button"
-                android:layout_width="match_parent"
-                android:layout_height="50dp"
-                android:text="Начать поиск"
-                android:background="@drawable/welcome_button"
-                android:textSize="17sp"
-                android:textAllCaps="false"
-                android:layout_margin="15dp"
-                />
-
-
-        </LinearLayout>
-
-
-    </FrameLayout>
+        <include
+            layout="@layout/layout_bottom_sheet"
+            />
 
     </androidx.coordinatorlayout.widget.CoordinatorLayout>
 

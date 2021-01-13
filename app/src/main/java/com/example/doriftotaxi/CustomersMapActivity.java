@@ -12,6 +12,10 @@ import android.location.Location;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
+import android.widget.LinearLayout;
+import android.widget.RelativeLayout;
+import android.widget.TextView;
+import android.widget.Toast;
 
 import com.firebase.geofire.GeoFire;
 import com.firebase.geofire.GeoLocation;
@@ -25,7 +29,6 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
-import com.google.android.gms.maps.model.BitmapDescriptor;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
@@ -38,9 +41,12 @@ import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
+import com.squareup.picasso.Picasso;
 
 import java.util.HashMap;
 import java.util.List;
+
+import de.hdodenhof.circleimageview.CircleImageView;
 
 public class CustomersMapActivity extends FragmentActivity implements OnMapReadyCallback,
         GoogleApiClient.ConnectionCallbacks,
@@ -54,20 +60,33 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
     Marker driverMarker, PickUpMarker;
     GeoQuery geoQuery;
 
+    //Кнопки интерфейса
     Button customerLogoutButton, settingsButton;
-    Button callTaxiButton;
     String customerID;
     LatLng CustomerPosition;
     int radius = 1;
-    Boolean driverFound = false, requestType, status = true;
+    Boolean driverFound = false, requestType = null, status = true;
     String driverFoundID;
+    private BottomSheetBehavior<LinearLayout> bottomSheetBehavior;
+    private LinearLayout bottomSheet;
 
+    //Нижний лист
+    Button callTaxiButton;
+
+    //Информация о такси
+    private TextView txtName, txtPhone, txtCar;
+    private CircleImageView DriverImageView;
+    private Button infoButton;
+    private RelativeLayout RelInfo;
+
+    //Для обращения к БД
     private FirebaseAuth mAuth;
     private FirebaseUser currentUser;
-    DatabaseReference CustomerDatabaseReference;
-    DatabaseReference DriversAvailableRef;
-    DatabaseReference DriversRef;
-    DatabaseReference DriversLocationRef;
+    private DatabaseReference CustomerDatabaseReference;
+    private DatabaseReference DriversAvailableRef;
+    private DatabaseReference DriversRef;
+    private DatabaseReference DriversLocationRef;
+    //
 
     private ValueEventListener DriverLocationRefListener;
 
@@ -76,10 +95,22 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_customers_map);
 
-
+        //Кнопки интерфейса
         customerLogoutButton = (Button) findViewById(R.id.customer_logout_button);
         settingsButton = (Button) findViewById(R.id.customer_settings_button);
         callTaxiButton = (Button) findViewById(R.id.customer_order_button);
+
+        //Нижний лист
+        bottomSheet = (LinearLayout) findViewById(R.id.bottomSheetContainer);
+        bottomSheetBehavior = BottomSheetBehavior.from(bottomSheet);
+
+        //Информация о такси
+        txtName = (TextView)findViewById(R.id.driver_name);
+        txtPhone = (TextView)findViewById(R.id.driver_phone);
+        txtCar = (TextView)findViewById(R.id.driver_car);
+        RelInfo = findViewById(R.id.rel_info);
+        DriverImageView = (CircleImageView)findViewById(R.id.driver_photo);
+        infoButton = findViewById(R.id.infoBtn);
 
         mAuth = FirebaseAuth.getInstance();
         currentUser = mAuth.getCurrentUser();
@@ -87,6 +118,13 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
         CustomerDatabaseReference = FirebaseDatabase.getInstance().getReference().child("Customers Requests"); //Обращение напрямую к конкретной полочке в Базе данных
         DriversAvailableRef = FirebaseDatabase.getInstance().getReference().child("Driver Available"); //Создаем переменную для получения Локации всех водителей
         DriversLocationRef = FirebaseDatabase.getInstance().getReference().child("Driver Working"); //Водитель принял заказ и он уже в работе
+
+        RelInfo.setVisibility(View.INVISIBLE);
+        RelInfo.setEnabled(false);
+        infoButton.setVisibility(View.INVISIBLE);
+        infoButton.setEnabled(true);
+
+        setStatusAuth("true");
 
 
 
@@ -99,9 +137,10 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
         customerLogoutButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                 mAuth.signOut();
 
-                 LogoutCustomer();
+                setStatusAuth("false");
+                mAuth.signOut();
+                LogoutCustomer();
             }
         });
 
@@ -153,7 +192,7 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
                     CustomerPosition = new LatLng(lastLocation.getLatitude(), lastLocation.getLongitude());
                     PickUpMarker = mMap.addMarker(new MarkerOptions().position(CustomerPosition).title("Я нахожусь здесь"));
 
-                    showLocation(lastLocation, 5);
+                    showLocation(lastLocation, 14);
 
                     callTaxiButton.setText("Поиск такси...");
                     getNearbyDrivers();
@@ -304,8 +343,13 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
                             List<Object> driverLocationMap = (List<Object>) snapshot.getValue();
                             double LocationLat = 0;
                             double LocationLng = 0;
-                            callTaxiButton.setText("Водитель найден!");
-                            //Тут необходимо добавить диалоговое окно с информацие о водителе.
+
+                            Toast.makeText(CustomersMapActivity.this, "Водитель найден!", Toast.LENGTH_SHORT).show();
+                            bottomSheetClose();
+                            RelInfo.setVisibility(View.VISIBLE);
+                            RelInfo.setEnabled(true);
+                            infoButton.setVisibility(View.VISIBLE);
+                            infoButton.setEnabled(true);
 
                             if (driverLocationMap.get(0) != null){
                                 LocationLat = Double.parseDouble(driverLocationMap.get(0).toString());
@@ -334,16 +378,16 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
                             float Distance = location1.distanceTo(location2); //Определение расстояния по гугл локации
 
                             if (Distance < 100){
-                                callTaxiButton.setText("Ваше такси подъезжает");
+                                infoButton.setText("Ваше такси подъезжает");
                             }
                             else {
-                                callTaxiButton.setText("Такси в пути");
+                                infoButton.setText("Такси в пути");
                             }
 
 
                             driverMarker = mMap.addMarker(new MarkerOptions().position(DriverLatLng)
                                     .title("Ваше такси тут").icon(BitmapDescriptorFactory.fromResource(R.drawable.car)));
-                            showLocation(driverMarker, 12);
+                            showLocation(driverMarker, 15);
 
                          }
                     }
@@ -353,5 +397,54 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
 
                     }
                 });
+    }
+
+    private void bottomSheetClose() {
+        bottomSheetBehavior.setHideable(true);
+        if(bottomSheetBehavior.getState() == BottomSheetBehavior.STATE_EXPANDED){
+            bottomSheetBehavior.setState(BottomSheetBehavior.STATE_COLLAPSED);
+        }
+        else {
+            bottomSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
+            bottomSheetBehavior.setHideable(false);
+        }
+    }
+
+    private void showLinearInfo(){
+        DatabaseReference reference = FirebaseDatabase.getInstance().getReference()
+                .child("Users")
+                .child("Drivers")
+                .child(driverFoundID);
+        reference.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                if(snapshot.exists() && snapshot.getChildrenCount()>0){
+                    String name = snapshot.child("name").getValue().toString();
+                    String phone = snapshot.child("phone").getValue().toString();
+                    String carmodel = snapshot.child("carmodel").getValue().toString();
+                    String carnumber = snapshot.child("carnumber").getValue().toString();
+                    txtName.setText(name);
+                    txtPhone.setText(phone);
+                    txtCar.setText(carmodel + "," + carnumber);
+
+                    if(snapshot.hasChild("image")) {
+                        String image = snapshot.child("image").getValue().toString();
+                        Picasso.get().load(image).into(DriverImageView);
+                    }
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+
+            }
+        });
+    }
+
+    private void setStatusAuth(String bool){
+        HashMap<String, Object> userMap = new HashMap<>();
+        userMap.put("status", bool);
+        DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference().child("Users").child("Customers");
+        databaseReference.child(mAuth.getCurrentUser().getUid()).updateChildren(userMap);
     }
 }

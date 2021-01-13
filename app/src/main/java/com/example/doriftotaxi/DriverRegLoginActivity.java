@@ -73,10 +73,11 @@ public class DriverRegLoginActivity extends AppCompatActivity {
                 String email = emailET.getText().toString();
                 String password = passwordET.getText().toString();
 
-                RegisterDriver(email, password);
-                Intent intent = new Intent(DriverRegLoginActivity.this, DriverSettingsActivity.class);
-                intent.putExtra("type", "Register_Driver");
-                startActivity(intent);
+                if(email.isEmpty() | password.isEmpty()){
+                    Toast.makeText(DriverRegLoginActivity.this, "Введите корректные данные!", Toast.LENGTH_SHORT).show();
+                }else {
+                    RegisterDriver(email, password);
+                }
             }
         });
 
@@ -86,34 +87,14 @@ public class DriverRegLoginActivity extends AppCompatActivity {
                 String email = emailET.getText().toString();
                 String password = passwordET.getText().toString();
 
-                if(email == "" || password == ""){
-                    Toast.makeText(DriverRegLoginActivity.this, "Введите корректные данные",Toast.LENGTH_SHORT).show();
-                }
-                else {
+                if(email.isEmpty() | password.isEmpty()){
+                    Toast.makeText(DriverRegLoginActivity.this, "Введите корректные данные!", Toast.LENGTH_SHORT).show();
+                }else {
                     SignInDriver(email, password);
                 }
             }
         });
     }
-
-    //Для проверки авторизован ли пользователь, если да, то кидаем сразу на DriversMapActivity, если нет, то
-    //остаемся здесь
-/*    @Override
-    protected void onStart() {
-
-        mAuth = FirebaseAuth.getInstance();
-        currentUser = mAuth.getCurrentUser();
-        super.onStart();
-        FirebaseUser cUser = mAuth.getCurrentUser();
-        if(cUser != null){
-            Toast.makeText(this, "Вход под " + cUser.getEmail(), Toast.LENGTH_SHORT).show();
-            Intent driverIntent = new Intent(DriverRegLoginActivity.this, DriversMapActivity.class);
-            startActivity(driverIntent);
-        }
-        else{
-            Toast.makeText(this, "Вход не выполнен", Toast.LENGTH_SHORT).show();
-        }
-    }*/
 
     private void SignInDriver(String email, String password) {
         loadingBar.setTitle("Вход");

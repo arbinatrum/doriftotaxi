@@ -1,8 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/bottomSheetContainer"
-    android:orientation="vertical" android:layout_width="match_parent"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    app:behavior_hideable="false"
+    app:behavior_peekHeight="100dp"
+    app:layout_behavior="com.google.android.material.bottomsheet.BottomSheetBehavior"
+    android:background="@drawable/bottom_sheet_background"
     android:layout_height="match_parent">
+
+
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="15dp"
+        android:src="@drawable/ic_baseline_remove"
+        android:layout_gravity="center|top"
+        android:layout_margin="5dp">
+    </ImageView>
 
     <EditText
         android:id="@+id/search_bar_A"
@@ -12,6 +27,7 @@
         android:hint="Введите ваш Адрес"
         android:layout_margin="10dp"
         android:padding="15dp"
+        android:singleLine="true"
         />
 
     <EditText
@@ -22,9 +38,11 @@
         android:hint="Введите адрес назначения"
         android:layout_margin="10dp"
         android:padding="15dp"
+        android:singleLine="true"
         />
 
     <TextView
+        android:id="@+id/const_info_panel"
         android:layout_width="match_parent"
         android:layout_height="50dp"
         android:background="@drawable/info_block"
@@ -36,7 +54,7 @@
         />
 
     <Button
-        android:id="@+id/search_button"
+        android:id="@+id/customer_order_button"
         android:layout_width="match_parent"
         android:layout_height="50dp"
         android:layout_margin="15dp"

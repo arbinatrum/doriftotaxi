@@ -70,11 +70,11 @@ public class CustomerRegLogActivity extends AppCompatActivity {
                 String email = emailET.getText().toString();
                 String password = passwordET.getText().toString();
 
-                RegisterCustomer(email, password);
-//                Intent intent = new Intent(CustomerRegLogActivity.this, DriverSettingsActivity.class);
-//                intent.putExtra("type", "Register_Customer");
-//                startActivity(intent);
-                //Переход на страницу настроек сразу после регистрации
+                if(email.isEmpty() | password.isEmpty()){
+                    Toast.makeText(CustomerRegLogActivity.this, "Введите корректные данные!", Toast.LENGTH_SHORT).show();
+                }else {
+                    RegisterCustomer(email, password);
+                }
             }
         });
 
@@ -84,7 +84,12 @@ public class CustomerRegLogActivity extends AppCompatActivity {
                 String email = emailET.getText().toString();
                 String password = passwordET.getText().toString();
 
-                SignInCustomer(email, password);
+
+                if(email.isEmpty() | password.isEmpty()){
+                    Toast.makeText(CustomerRegLogActivity.this, "Введите корректные данные!", Toast.LENGTH_SHORT).show();
+                }else {
+                    SignInCustomer(email, password);
+                }
             }
         });
     }

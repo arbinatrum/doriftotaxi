@@ -40,6 +40,7 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -76,6 +77,8 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_drivers_map);
 
+
+
         Button logoutDriverButton = (Button) findViewById(R.id.driver_logout_button);
         Button settingsDriverButton = (Button) findViewById(R.id.driver_settings_button);
         DriverApprovedButton = (Button)findViewById(R.id.driver_Approved_button);
@@ -85,12 +88,16 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
         driverID = mAuth.getCurrentUser().getUid();
         DriverDatabaseRef = FirebaseDatabase.getInstance().getReference().child("Driver Available");
 
+        setStatusAuth("true");
+
+
         locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
 
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
         assert mapFragment != null;
         mapFragment.getMapAsync(this);
+
 
         settingsDriverButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -107,7 +114,7 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
                 updateLocationUser();
                 DriverApprovedButton.setVisibility(View.INVISIBLE);
                 DriverApprovedButton.setEnabled(false);
-                showLocation(lastLocation, 5);
+                showLocation(lastLocation, 14);
             }
         });
 
@@ -115,6 +122,8 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
             @Override
             public void onClick(View v) {
                 currentLogoutDriverStatus = true;
+                setStatusAuth("false");
+                stopAvailable();
                 mAuth.signOut();//Выход из аутентификации
 
                 LogoutDriver();//Переход обратно на экран выбора пользователя
@@ -217,6 +226,21 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
         finish();
     }
 
+    private void stopAvailable() {
+        if(DriverApprovedButton.isEnabled()) {
+            if(customerID != "") {
+                String userID = Objects.requireNonNull(FirebaseAuth.getInstance().getCurrentUser().getUid());
+                DatabaseReference DriverAvailablityRef = FirebaseDatabase.getInstance().getReference().child("Driver Available");
+
+                GeoFire geoFireAvailablity = new GeoFire(DriverAvailablityRef);
+                geoFireAvailablity.removeLocation(userID);
+
+                DatabaseReference DriverAvailableDisabler = FirebaseDatabase.getInstance().getReference().child("Driver Available").child(userID);
+                DriverAvailableDisabler.removeValue();
+            }
+        }
+    }
+
     private void updateLocationUser() {
         String userID = FirebaseAuth.getInstance().getCurrentUser().getUid();
 
@@ -307,5 +331,10 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
             }
         });
     }
-
+    private void setStatusAuth(String bool){
+        HashMap<String, Object> userMap = new HashMap<>();
+        userMap.put("status", bool);
+        DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference().child("Users").child("Drivers");
+        databaseReference.child(mAuth.getCurrentUser().getUid()).updateChildren(userMap);
+    }
 }
