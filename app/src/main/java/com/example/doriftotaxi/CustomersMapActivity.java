@@ -95,6 +95,14 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_customers_map);
 
+        String getType = getIntent().getStringExtra("type");
+
+        if(getType != null){
+            if(getType.equals("Ready!")){
+                Toast.makeText(this,"Данные успешно сохранены!", Toast.LENGTH_SHORT).show();
+            }
+        }
+
         //Кнопки интерфейса
         customerLogoutButton = (Button) findViewById(R.id.customer_logout_button);
         settingsButton = (Button) findViewById(R.id.customer_settings_button);
@@ -103,6 +111,8 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
         //Нижний лист
         bottomSheet = (LinearLayout) findViewById(R.id.bottomSheetContainer);
         bottomSheetBehavior = BottomSheetBehavior.from(bottomSheet);
+
+        //bottomSheet.setVisibility(View.INVISIBLE);
 
         //Информация о такси
         txtName = (TextView)findViewById(R.id.driver_name);
@@ -120,12 +130,7 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
         DriversLocationRef = FirebaseDatabase.getInstance().getReference().child("Driver Working"); //Водитель принял заказ и он уже в работе
 
         RelInfo.setVisibility(View.INVISIBLE);
-        RelInfo.setEnabled(false);
         infoButton.setVisibility(View.INVISIBLE);
-        infoButton.setEnabled(true);
-
-        setStatusAuth("true");
-
 
 
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
@@ -133,12 +138,10 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
         mapFragment.getMapAsync(this);
 
         //Здесь необходимо боавить новый метод на запрос включения GPS
-
         customerLogoutButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
 
-                setStatusAuth("false");
                 mAuth.signOut();
                 LogoutCustomer();
             }
@@ -184,6 +187,7 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
                     callTaxiButton.setText("Вызвать такси");
                 }
                 else {
+                    requestType = true;
 
                     GeoFire geoFire = new GeoFire(CustomerDatabaseReference);
                     geoFire.setLocation(customerID, new GeoLocation(lastLocation.getLatitude(), lastLocation.getLongitude()));
@@ -251,7 +255,7 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
 
 
         if(status){
-            showLocation(lastLocation, 12);
+            showLocation(lastLocation, 18);
         }
         status = false;
     }
@@ -259,13 +263,6 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
     //Метод обновления камеры вынесен отдельно
     private void showLocation(Location location, int zoomSide) {
         LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
-
-        mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
-        mMap.animateCamera(CameraUpdateFactory.zoomTo(zoomSide));
-    }
-
-    private void showLocation(Marker Marker, int zoomSide) {
-        LatLng latLng = new LatLng(Marker.getPosition().latitude, Marker.getPosition().longitude);
 
         mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
         mMap.animateCamera(CameraUpdateFactory.zoomTo(zoomSide));
@@ -346,6 +343,7 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
 
                             Toast.makeText(CustomersMapActivity.this, "Водитель найден!", Toast.LENGTH_SHORT).show();
                             bottomSheetClose();
+                            showLinearInfo();
                             RelInfo.setVisibility(View.VISIBLE);
                             RelInfo.setEnabled(true);
                             infoButton.setVisibility(View.VISIBLE);
@@ -363,7 +361,6 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
 
                             if(driverMarker != null) { //Удалим лишних водителей
                                 driverMarker.remove();
-
                             }
 
                             //Определим расстояние между таксистом и заказчиком
@@ -387,8 +384,7 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
 
                             driverMarker = mMap.addMarker(new MarkerOptions().position(DriverLatLng)
                                     .title("Ваше такси тут").icon(BitmapDescriptorFactory.fromResource(R.drawable.car)));
-                            showLocation(driverMarker, 15);
-
+                            //showLocation(driverMarker, 15);
                          }
                     }
 
@@ -439,12 +435,5 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
 
             }
         });
-    }
-
-    private void setStatusAuth(String bool){
-        HashMap<String, Object> userMap = new HashMap<>();
-        userMap.put("status", bool);
-        DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference().child("Users").child("Customers");
-        databaseReference.child(mAuth.getCurrentUser().getUid()).updateChildren(userMap);
     }
 }

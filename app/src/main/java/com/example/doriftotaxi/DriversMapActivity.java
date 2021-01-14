@@ -65,7 +65,7 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
     private FirebaseUser currentUser;
     private DatabaseReference DriverDatabaseRef;
     private LatLng DriverPosition;
-    private boolean status = true;
+    private boolean status = true, statusBtn;
 
     private Boolean currentLogoutDriverStatus = false;
     private DatabaseReference assignedCustomerRef, AssignedCustomerPosition;
@@ -77,7 +77,13 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_drivers_map);
 
+        String getType = getIntent().getStringExtra("type");
 
+        if(getType != null){
+            if(getType.equals("Ready!")){
+                Toast.makeText(this,"Данные успешно сохранены!", Toast.LENGTH_SHORT).show();
+            }
+        }
 
         Button logoutDriverButton = (Button) findViewById(R.id.driver_logout_button);
         Button settingsDriverButton = (Button) findViewById(R.id.driver_settings_button);
@@ -88,9 +94,6 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
         driverID = mAuth.getCurrentUser().getUid();
         DriverDatabaseRef = FirebaseDatabase.getInstance().getReference().child("Driver Available");
 
-        setStatusAuth("true");
-
-
         locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
 
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
@@ -98,6 +101,7 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
         assert mapFragment != null;
         mapFragment.getMapAsync(this);
 
+        statusBtn = true;
 
         settingsDriverButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -111,10 +115,21 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
         DriverApprovedButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                updateLocationUser();
-                DriverApprovedButton.setVisibility(View.INVISIBLE);
-                DriverApprovedButton.setEnabled(false);
-                showLocation(lastLocation, 14);
+                if(statusBtn){
+                    statusBtn = false;
+                    showLocation(lastLocation, 14);
+                    updateLocationUser();
+                    getAssignedCustomerRequest(); //Необходимо будет перенести в отдельный метод для того, чтобы принимать запрос от заказчика
+                    DriverApprovedButton.setText("Уйти в состояние покоя");
+                }else {
+                    if(customerID != "") {
+                        statusBtn = true;
+                        DriverApprovedButton.setText("Готов принимать заказы");
+                        stopAvailable();
+                    } else {
+                        Toast.makeText(DriversMapActivity.this, "Нельзя отменять заказы во время поездки!", Toast.LENGTH_SHORT).show();
+                    }
+                }
             }
         });
 
@@ -122,17 +137,13 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
             @Override
             public void onClick(View v) {
                 currentLogoutDriverStatus = true;
-                setStatusAuth("false");
                 stopAvailable();
                 mAuth.signOut();//Выход из аутентификации
 
                 LogoutDriver();//Переход обратно на экран выбора пользователя
-                if(!DriverApprovedButton.isEnabled()) DisconnectDriver();//Передача данных в firebase
+                if(!statusBtn) stopAvailable();//Передача данных в firebase
             }
         });
-
-
-        getAssignedCustomerRequest();
     }
 
 
@@ -177,9 +188,8 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
             //Мое месторасположение
             if(status) {
                 status = false;
-                showLocation(lastLocation, 12);
+                showLocation(lastLocation, 18);
             }
-            if (!DriverApprovedButton.isEnabled()) updateLocationUser();
         }
     }
 
@@ -227,8 +237,7 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
     }
 
     private void stopAvailable() {
-        if(DriverApprovedButton.isEnabled()) {
-            if(customerID != "") {
+        //Проверка на наличие привязанного заказчика, НЕ РЕАЛИЗОВАНО
                 String userID = Objects.requireNonNull(FirebaseAuth.getInstance().getCurrentUser().getUid());
                 DatabaseReference DriverAvailablityRef = FirebaseDatabase.getInstance().getReference().child("Driver Available");
 
@@ -237,8 +246,6 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
 
                 DatabaseReference DriverAvailableDisabler = FirebaseDatabase.getInstance().getReference().child("Driver Available").child(userID);
                 DriverAvailableDisabler.removeValue();
-            }
-        }
     }
 
     private void updateLocationUser() {
@@ -265,6 +272,7 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
         }
     }
 
+    //На получение запросов от водителей
     private void getAssignedCustomerRequest() {
         assignedCustomerRef = FirebaseDatabase.getInstance().getReference()
                 .child("Users").child("Drivers").child(driverID).child("CustomerRideID");
@@ -288,7 +296,6 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
                     if(AssignedCustomerPositionListener != null){
                         AssignedCustomerPosition.removeEventListener(AssignedCustomerPositionListener);
                     }
-
                 }
             }
 
@@ -299,6 +306,7 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
         });
     }
 
+    //Тут мы лишь обновляем данные о месторасположении заказчика
     private void getAssignedCustomerPosition() {
         AssignedCustomerPosition = FirebaseDatabase.getInstance().getReference().child("Customer Requests")
                 .child(customerID).child("l");
@@ -330,11 +338,5 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
 
             }
         });
-    }
-    private void setStatusAuth(String bool){
-        HashMap<String, Object> userMap = new HashMap<>();
-        userMap.put("status", bool);
-        DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference().child("Users").child("Drivers");
-        databaseReference.child(mAuth.getCurrentUser().getUid()).updateChildren(userMap);
     }
 }

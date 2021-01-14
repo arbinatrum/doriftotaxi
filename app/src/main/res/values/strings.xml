@@ -12,7 +12,7 @@
     <string name="title_activity_customers_map">Map</string>
     <string name="driverSettingsBtn">Настройки</string>
     <string name="DriverExitBtn">Выйти</string>
-    <string name="DriverReadyToOrder">Готов принять заказ</string>
+    <string name="DriverReadyToOrder">Готов принимать заказы</string>
     <string name="title_location_permission">Разрешение на доступ к геолокации</string>
     <string name="text_location_permission">Предоставить доступ</string>
     <string name="ok">Предоставить доступ</string>

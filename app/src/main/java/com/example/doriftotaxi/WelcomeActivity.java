@@ -4,8 +4,10 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.fragment.app.FragmentActivity;
 
 import android.Manifest;
+import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -36,9 +38,8 @@ public class WelcomeActivity extends AppCompatActivity {
 
     Button driverBtn, customerBtn;
 
-    /*private FirebaseAuth mAuth;
+    private FirebaseAuth mAuth;
     private FirebaseUser CurrentUser;
-    private DatabaseReference databaseReference;*/
 
 
 
@@ -48,9 +49,14 @@ public class WelcomeActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_welcome);
 
-        //initialize();
+        checkPermissions();
+        initialize();
         driverBtn = (Button) findViewById(R.id.driverBtn);
         customerBtn = (Button) findViewById(R.id.customerBtn);
+
+        if(CurrentUser != null){
+            openMap();
+        }
 
         driverBtn.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -60,39 +66,29 @@ public class WelcomeActivity extends AppCompatActivity {
             }
         });
 
-
         customerBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                /*Intent customerIntent = new Intent(WelcomeActivity.this, CustomerRegLogActivity.class);
-                startActivity(customerIntent);*/
                 Intent customerIntent = new Intent(WelcomeActivity.this, CustomerRegLogActivity.class);
                 startActivity(customerIntent);
             }
         });
-
-        /*if(CurrentUser != null){
-
-        }
-
-        init();*/
     }
 
-    /*private void openMap() {
-        databaseReference.child("Customers").addValueEventListener(new ValueEventListener() {
+    private void openMap() {
+        DatabaseReference databaseReference1 = FirebaseDatabase.getInstance().getReference();
+
+        databaseReference1.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
-                if(snapshot.child(mAuth.getCurrentUser().getUid()).exists()){
+                if(snapshot.child("Users").child("Drivers").child(CurrentUser.getUid()).exists()){
+                    startActivity(new Intent(WelcomeActivity.this, DriversMapActivity.class));
+                }else if(snapshot.child("Users").child("Customers").child(CurrentUser.getUid()).exists()){
                     startActivity(new Intent(WelcomeActivity.this, CustomersMapActivity.class));
                 }
-                else {
-                    startActivity(new Intent(WelcomeActivity.this, DriversMapActivity.class));
-                }
             }
-
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
-
             }
         });
     }
@@ -100,12 +96,6 @@ public class WelcomeActivity extends AppCompatActivity {
     private void initialize() {
         mAuth = FirebaseAuth.getInstance();
         CurrentUser = mAuth.getCurrentUser();
-        databaseReference = FirebaseDatabase.getInstance().getReference().child("Users");
-    }*/
-
-    private void init() {
-        LocationManager locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-        checkPermissions();
     }
 
     @Override
@@ -119,15 +109,4 @@ public class WelcomeActivity extends AppCompatActivity {
             requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION}, 100);
         }
     }
-
-    /*private void getStatusAuth(){
-        DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference()
-                .child("Users")
-                .child("Drivers")
-                .child(mAuth.getCurrentUser().getUid()).;
-        databaseReference.child(mAuth.getCurrentUser().getUid()).updateChildren(userMap);
-
-
-        openMap();
-    }*/
 }

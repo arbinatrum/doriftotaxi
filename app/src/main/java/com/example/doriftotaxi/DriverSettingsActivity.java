@@ -62,7 +62,6 @@ public class DriverSettingsActivity extends AppCompatActivity {
 
         getType = getIntent().getStringExtra("type");
 
-
         circleImageView = (CircleImageView)findViewById(R.id.profile_image_change);
         nameET = findViewById(R.id.name_text);
         phoneET = findViewById(R.id.phone_number_text);
@@ -256,14 +255,17 @@ public class DriverSettingsActivity extends AppCompatActivity {
                     userMap.put("carmodel", carET.getText().toString());
                     userMap.put("carnumber", carNumberET.getText().toString());
                 }
-
                 databaseReference.child(mAuth.getCurrentUser().getUid()).updateChildren(userMap);
                 //Отправляем все данные, включая картинку в FirebaseDatabase
 
                 if (getType.equals("Drivers")) {
-                    startActivity(new Intent(DriverSettingsActivity.this, DriversMapActivity.class));
+                    Intent intent = new Intent(DriverSettingsActivity.this, DriversMapActivity.class);
+                    intent.putExtra("type", "Ready!");
+                    startActivity(intent);
                 } else {
-                    startActivity(new Intent(DriverSettingsActivity.this, CustomersMapActivity.class));
+                    Intent intent = new Intent(DriverSettingsActivity.this, CustomersMapActivity.class);
+                    intent.putExtra("type", "Ready!");
+                    startActivity(intent);
                 }
             }
         }
@@ -273,7 +275,7 @@ public class DriverSettingsActivity extends AppCompatActivity {
         databaseReference.child(mAuth.getCurrentUser().getUid()).addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
-                if(snapshot.exists() && snapshot.getChildrenCount()>0){
+                if(snapshot.exists() && snapshot.getChildrenCount()>1){
                     String name = snapshot.child("name").getValue().toString();
                     String phone = snapshot.child("phone").getValue().toString();
                     nameET.setText(name);
