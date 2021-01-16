@@ -37,11 +37,12 @@
         android:id="@+id/driver_Approved_button"
         android:layout_width="300dp"
         android:layout_height="wrap_content"
-        android:background="@color/common_google_signin_btn_text_dark_pressed"
-        android:textColor="@android:color/holo_green_dark"
+        android:background="@drawable/edit_text_shape"
+        android:textColor="@color/colorUltraGreen"
         android:layout_alignParentBottom="true"
         android:layout_centerHorizontal="true"
         android:layout_marginBottom="15dp"
-        android:text="@string/DriverReadyToOrder" />
+        android:text="@string/DriverReadyToOrder"
+        android:backgroundTint="@android:color/white"/>
 
 </RelativeLayout>

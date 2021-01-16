@@ -65,7 +65,7 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
     String customerID;
     LatLng CustomerPosition;
     int radius = 1;
-    Boolean driverFound = false, requestType = null, status = true;
+    Boolean driverFound = false, requestType = false, status = true;
     String driverFoundID;
     private BottomSheetBehavior<LinearLayout> bottomSheetBehavior;
     private LinearLayout bottomSheet;
@@ -115,16 +115,14 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
         mAuth = FirebaseAuth.getInstance();
         currentUser = mAuth.getCurrentUser();
         customerID = FirebaseAuth.getInstance().getCurrentUser().getUid();
-        CustomerDatabaseReference = FirebaseDatabase.getInstance().getReference().child("Customers Requests"); //Обращение напрямую к конкретной полочке в Базе данных
-        DriversAvailableRef = FirebaseDatabase.getInstance().getReference().child("Driver Available"); //Создаем переменную для получения Локации всех водителей
-        DriversLocationRef = FirebaseDatabase.getInstance().getReference().child("Driver Working"); //Водитель принял заказ и он уже в работе
+        CustomerDatabaseReference = FirebaseDatabase.getInstance().getReference().child("Customers Requests"); //Обращаемся к запросам на заказ
+        DriversAvailableRef = FirebaseDatabase.getInstance().getReference().child("Driver Available"); //Обращаемся к доступным водителям
+        DriversLocationRef = FirebaseDatabase.getInstance().getReference().child("Driver Working"); //Обращаемся к водителям в работе
 
         RelInfo.setVisibility(View.INVISIBLE);
         RelInfo.setEnabled(false);
         infoButton.setVisibility(View.INVISIBLE);
         infoButton.setEnabled(true);
-
-        setStatusAuth("true");
 
 
 
@@ -137,8 +135,6 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
         customerLogoutButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-
-                setStatusAuth("false");
                 mAuth.signOut();
                 LogoutCustomer();
             }
@@ -157,10 +153,18 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
             @Override
             public void onClick(View v) {
                 //Здесь также необходимо боавить новый метод на запрос включения GPS, если все таки пользователь включил GPS и предоставил доступы к приложению, то выполняем код ниже
+
+                /*
+                Если есть запрос на поиск водителей, но заказчик решил отменить поиск,
+                то удаляем всех видимых водителей, если они есть.
+                Удаляем из БД привязку к водителю, если она не пустая.
+                Отменяем отправку данных о пользователе в БД.
+                Удаляем все маркеры с карты и меняем название кнопки на Вызвать такси.
+                */
                 if(requestType){
                     requestType = false;
                     geoQuery.removeAllListeners();
-                    DriversLocationRef.removeEventListener(DriverLocationRefListener);
+                    DriversLocationRef.removeEventListener(DriverLocationRefListener); //Отменяем обновление данных о геолокации водителя
                     if(driverFound != null){
                         DriversRef = FirebaseDatabase.getInstance().getReference()
                                 .child("Users").child("Drivers").child(driverFoundID).child("CustomerRideID");
@@ -184,23 +188,28 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
                     callTaxiButton.setText("Вызвать такси");
                 }
                 else {
+                    //Добавить код на определение количества дочерних элементов у заказчика: if countchildren > 1 {выполняем код ниже} else {Выдаем Toast на необходимость бобавления данных о себе}
 
+                    requestType = true;
+
+                    //Устанавливаем новую полку в БД RequestType и записываем туда месторасположение заказчика и его ID
                     GeoFire geoFire = new GeoFire(CustomerDatabaseReference);
                     geoFire.setLocation(customerID, new GeoLocation(lastLocation.getLatitude(), lastLocation.getLongitude()));
 
-                    //Установка геопозиции заказчика
+                    //Установка геопозиции заказчика на карте
                     CustomerPosition = new LatLng(lastLocation.getLatitude(), lastLocation.getLongitude());
                     PickUpMarker = mMap.addMarker(new MarkerOptions().position(CustomerPosition).title("Я нахожусь здесь"));
 
-                    showLocation(lastLocation, 14);
+                    showLocation(lastLocation, 14); //Зум камеры при поиске
 
                     callTaxiButton.setText("Поиск такси...");
-                    getNearbyDrivers();
+                    getNearbyDrivers(); //Начинаем поиск водителей
                 }
             }
         });
     }
 
+    //Отрисовка карты
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
@@ -249,7 +258,6 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
     public void onLocationChanged(Location location) {
         lastLocation = location;
 
-
         if(status){
             showLocation(lastLocation, 12);
         }
@@ -286,10 +294,14 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
     //Метод для поиска водителей поблизости
     private void getNearbyDrivers() {
         GeoFire geoFire = new GeoFire(DriversAvailableRef);
-        GeoQuery geoQuery = geoFire.queryAtLocation(new GeoLocation(CustomerPosition.latitude, CustomerPosition.longitude), radius);
+        GeoQuery geoQuery = geoFire.queryAtLocation(new GeoLocation(CustomerPosition.latitude, CustomerPosition.longitude), radius); //Начинаем поиск с позиции заказчика и ставим радиус, в последствии обновлеяем его
         geoQuery.removeAllListeners();
 
+        //Здесь нужно добавить код определяющий принял ли таксист у себя заказ или нет.
 
+        /*Если таксист у себя принял данный заказ, то выполняем следующиее:
+        Если водитель не занят и статус запроса True, то берем id заказчика и в Drivers/driverFoundID/CustomerRideID
+        создаем новый элемент с customerID.*/
         geoQuery.addGeoQueryEventListener(new GeoQueryEventListener() {
             @Override
             public void onKeyEntered(String key, GeoLocation location) {
@@ -304,6 +316,7 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
                     //Привязка водителя к заказчику после нахождения
 
                     GetDriverLocation();
+                    //showLocation(driverMarker, 15); //Показываем заказчику расположение водителя
                 }
             }
 
@@ -331,10 +344,12 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
 
             }
         });
+
+        //Если таксист не принял заказ, то ничего не делаем ни у заказчика ни у таксиста. см. логику на DriversMapActivity
     }
 
     private void GetDriverLocation() {
-        //Получить данные о геолокаци водителя
+        //Водитель найден. Обновляем данные геолокаци таксиста
         DriverLocationRefListener = DriversLocationRef.child(driverFoundID).child("l").
                 addValueEventListener(new ValueEventListener() {
                     @Override
@@ -350,6 +365,7 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
                             RelInfo.setEnabled(true);
                             infoButton.setVisibility(View.VISIBLE);
                             infoButton.setEnabled(true);
+                            showLinearInfo();
 
                             if (driverLocationMap.get(0) != null){
                                 LocationLat = Double.parseDouble(driverLocationMap.get(0).toString());
@@ -363,7 +379,6 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
 
                             if(driverMarker != null) { //Удалим лишних водителей
                                 driverMarker.remove();
-
                             }
 
                             //Определим расстояние между таксистом и заказчиком
@@ -377,18 +392,15 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
 
                             float Distance = location1.distanceTo(location2); //Определение расстояния по гугл локации
 
-                            if (Distance < 100){
+                            if (Distance < 50){
                                 infoButton.setText("Ваше такси подъезжает");
                             }
                             else {
                                 infoButton.setText("Такси в пути");
                             }
 
-
                             driverMarker = mMap.addMarker(new MarkerOptions().position(DriverLatLng)
                                     .title("Ваше такси тут").icon(BitmapDescriptorFactory.fromResource(R.drawable.car)));
-                            showLocation(driverMarker, 15);
-
                          }
                     }
 
@@ -418,7 +430,7 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
         reference.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
-                if(snapshot.exists() && snapshot.getChildrenCount()>0){
+                if(snapshot.exists() && snapshot.getChildrenCount() > 1){
                     String name = snapshot.child("name").getValue().toString();
                     String phone = snapshot.child("phone").getValue().toString();
                     String carmodel = snapshot.child("carmodel").getValue().toString();
@@ -439,12 +451,5 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
 
             }
         });
-    }
-
-    private void setStatusAuth(String bool){
-        HashMap<String, Object> userMap = new HashMap<>();
-        userMap.put("status", bool);
-        DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference().child("Users").child("Customers");
-        databaseReference.child(mAuth.getCurrentUser().getUid()).updateChildren(userMap);
     }
 }
