@@ -17,8 +17,11 @@ import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 
 public class CustomerRegLogActivity extends AppCompatActivity {
 
@@ -26,7 +29,7 @@ public class CustomerRegLogActivity extends AppCompatActivity {
     Button signInBtn, signUpBtn;
     EditText emailET, passwordET;
 
-    FirebaseUser currentUser;
+    FirebaseUser CurrentUser;
     FirebaseAuth mAuth;
     DatabaseReference CustomerDatabaseRef;
     String OnlineCustomerID;
@@ -47,6 +50,11 @@ public class CustomerRegLogActivity extends AppCompatActivity {
         passwordET = (EditText)findViewById(R.id.customerPassword);
 
         mAuth = FirebaseAuth.getInstance();
+        CurrentUser = mAuth.getCurrentUser();
+
+        if(CurrentUser != null){
+            openMap();
+        }
 
         loadingBar = new ProgressDialog(this);
 
@@ -90,6 +98,24 @@ public class CustomerRegLogActivity extends AppCompatActivity {
                 }else {
                     SignInCustomer(email, password);
                 }
+            }
+        });
+    }
+
+    private void openMap() {
+        DatabaseReference databaseReference1 = FirebaseDatabase.getInstance().getReference();
+
+        databaseReference1.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                if(snapshot.child("Users").child("Drivers").child(CurrentUser.getUid()).exists()){
+                    startActivity(new Intent(CustomerRegLogActivity.this, DriversMapActivity.class));
+                }else if(snapshot.child("Users").child("Customers").child(CurrentUser.getUid()).exists()){
+                    startActivity(new Intent(CustomerRegLogActivity.this, CustomersMapActivity.class));
+                }
+            }
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
             }
         });
     }

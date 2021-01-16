@@ -4,8 +4,10 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.core.content.PermissionChecker;
 
 import android.Manifest;
+import android.accessibilityservice.AccessibilityService;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -17,6 +19,7 @@ import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -36,21 +39,21 @@ public class WelcomeActivity extends AppCompatActivity {
 
     Button driverBtn, customerBtn;
 
-    /*private FirebaseAuth mAuth;
+    private FirebaseAuth mAuth;
     private FirebaseUser CurrentUser;
-    private DatabaseReference databaseReference;*/
-
-
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_welcome);
 
-        //initialize();
+        initialize();
         driverBtn = (Button) findViewById(R.id.driverBtn);
         customerBtn = (Button) findViewById(R.id.customerBtn);
+
+        if(CurrentUser != null){
+            openMap();
+        }
 
         driverBtn.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -60,33 +63,27 @@ public class WelcomeActivity extends AppCompatActivity {
             }
         });
 
-
         customerBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                /*Intent customerIntent = new Intent(WelcomeActivity.this, CustomerRegLogActivity.class);
-                startActivity(customerIntent);*/
                 Intent customerIntent = new Intent(WelcomeActivity.this, CustomerRegLogActivity.class);
                 startActivity(customerIntent);
             }
         });
 
-        /*if(CurrentUser != null){
-
-        }
-
-        init();*/
+        checkPermissions();
     }
 
-    /*private void openMap() {
-        databaseReference.child("Customers").addValueEventListener(new ValueEventListener() {
+    private void openMap() {
+        DatabaseReference databaseReference1 = FirebaseDatabase.getInstance().getReference();
+
+        databaseReference1.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
-                if(snapshot.child(mAuth.getCurrentUser().getUid()).exists()){
-                    startActivity(new Intent(WelcomeActivity.this, CustomersMapActivity.class));
-                }
-                else {
+                if(snapshot.child("Users").child("Drivers").child(CurrentUser.getUid()).exists()){
                     startActivity(new Intent(WelcomeActivity.this, DriversMapActivity.class));
+                }else if(snapshot.child("Users").child("Customers").child(CurrentUser.getUid()).exists()){
+                    startActivity(new Intent(WelcomeActivity.this, CustomersMapActivity.class));
                 }
             }
 
@@ -100,34 +97,31 @@ public class WelcomeActivity extends AppCompatActivity {
     private void initialize() {
         mAuth = FirebaseAuth.getInstance();
         CurrentUser = mAuth.getCurrentUser();
-        databaseReference = FirebaseDatabase.getInstance().getReference().child("Users");
-    }*/
-
-    private void init() {
-        LocationManager locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-        checkPermissions();
     }
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-    }
 
-    private void checkPermissions() {
-        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED
-                && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED){
-            requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION}, 100);
+        if(grantResults[0] == RESULT_CANCELED && requestCode == 100){
+            Toast.makeText(this, "Выданы пермишены, не забудьте включить GPS!", Toast.LENGTH_SHORT).show();
+        } else {
+            checkPermissions();
         }
     }
 
-    /*private void getStatusAuth(){
-        DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference()
-                .child("Users")
-                .child("Drivers")
-                .child(mAuth.getCurrentUser().getUid()).;
-        databaseReference.child(mAuth.getCurrentUser().getUid()).updateChildren(userMap);
+    private void checkPermissions() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED
+                && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION}, 100);
+        }
 
+        /*AccessibilityService mContext = null;
+        LocationManager mLocationManager = (LocationManager) mContext.getSystemService(Context.LOCATION_SERVICE);
+        boolean mIsGPSEnabled = mLocationManager.isProviderEnabled(LocationManager.GPS_PROVIDER);
+        boolean mIsNetworkEnabled = mLocationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
+        boolean mIsGeoDisabled = !mIsGPSEnabled && !mIsNetworkEnabled;
 
-        openMap();
-    }*/
+        if(mIsGeoDisabled) startActivity(new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS));*/
+    }
 }

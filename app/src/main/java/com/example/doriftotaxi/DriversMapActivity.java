@@ -115,11 +115,12 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
             @Override
             public void onClick(View v) {
                 if(requestType && customerID == "") {
+                    showLocation(lastLocation, 18);
                     DisconnectDriver();
                     requestType = false;
                     DriverApprovedButton.setText("Начать поиск заказов");
                 } else if(customerID == "" && !requestType){
-                    showLocation(lastLocation, 14); //Переводим камеру на таксиста
+                    showLocation(lastLocation, 10); //Переводим камеру на таксиста
                     requestType = true;
                     DriverApprovedButton.setText("Прекратить поиск заказов");
                     getAssignedCustomerRequest();
@@ -184,9 +185,9 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
             //Мое месторасположение
             if(status) {
                 status = false;
-                showLocation(lastLocation, 12);
+                showLocation(lastLocation, 18);
             }
-            if (requestType && customerID != "") updateLocationUser();
+            if (requestType) updateLocationUser();
         }
     }
 

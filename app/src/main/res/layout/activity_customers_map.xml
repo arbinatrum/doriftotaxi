@@ -125,13 +125,13 @@
             android:layout_height="70dp"
             android:id="@+id/infoBtn"
             android:background="@drawable/welcome_button"
-            android:text="Информация о такси"
+            android:text="Начать поиск такси"
             />
 
 
     </LinearLayout>
 
-    <androidx.coordinatorlayout.widget.CoordinatorLayout
+    <!--<androidx.coordinatorlayout.widget.CoordinatorLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"
@@ -141,7 +141,7 @@
             layout="@layout/layout_bottom_sheet"
             />
 
-    </androidx.coordinatorlayout.widget.CoordinatorLayout>
+    </androidx.coordinatorlayout.widget.CoordinatorLayout>-->
 
 
 </RelativeLayout>
