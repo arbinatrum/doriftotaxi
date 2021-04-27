@@ -9,6 +9,7 @@ import androidx.core.content.PermissionChecker;
 import android.Manifest;
 import android.accessibilityservice.AccessibilityService;
 import android.app.AlertDialog;
+import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -75,13 +76,25 @@ public class WelcomeActivity extends AppCompatActivity {
     }
 
     private void openMap() {
+        /*final ProgressDialog progressDialog = new ProgressDialog(this);
+        progressDialog.setTitle("Загрузка информации");
+        progressDialog.setMessage("Пожалуйста, подождите");
+        progressDialog.show();*/
+        //progressDialog.dismiss();
+
         DatabaseReference databaseReference1 = FirebaseDatabase.getInstance().getReference();
 
         databaseReference1.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 if(snapshot.child("Users").child("Drivers").child(CurrentUser.getUid()).exists()){
-                    startActivity(new Intent(WelcomeActivity.this, DriversMapActivity.class));
+                    if(snapshot.child("Users").child("Drivers").child(CurrentUser.getUid()).getChildrenCount() == 0){
+                        Intent driverIntent = new Intent(WelcomeActivity.this, DriverSettingsActivity.class);
+                        driverIntent.putExtra("type", "Drivers");
+                        startActivity(driverIntent);
+                    } else {
+                        startActivity(new Intent(WelcomeActivity.this, DriversMapActivity.class));
+                    }
                 }else if(snapshot.child("Users").child("Customers").child(CurrentUser.getUid()).exists()){
                     startActivity(new Intent(WelcomeActivity.this, CustomersMapActivity.class));
                 }

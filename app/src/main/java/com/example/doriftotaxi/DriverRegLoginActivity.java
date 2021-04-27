@@ -38,6 +38,7 @@ public class DriverRegLoginActivity extends AppCompatActivity {
 
 
     ProgressDialog loadingBar;
+    Boolean getUserInformationStatus = true;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -112,7 +113,13 @@ public class DriverRegLoginActivity extends AppCompatActivity {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 if(snapshot.child("Users").child("Drivers").child(CurrentUser.getUid()).exists()){
-                    startActivity(new Intent(DriverRegLoginActivity.this, DriversMapActivity.class));
+                    if(snapshot.child("Users").child("Drivers").child(CurrentUser.getUid()).getChildrenCount() == 0){
+                        Intent driverIntent = new Intent(DriverRegLoginActivity.this, DriverSettingsActivity.class);
+                        driverIntent.putExtra("type", "Drivers");
+                        startActivity(driverIntent);
+                    } else {
+                        startActivity(new Intent(DriverRegLoginActivity.this, DriversMapActivity.class));
+                    }
                 }else if(snapshot.child("Users").child("Customers").child(CurrentUser.getUid()).exists()){
                     startActivity(new Intent(DriverRegLoginActivity.this, CustomersMapActivity.class));
                 }
@@ -134,8 +141,20 @@ public class DriverRegLoginActivity extends AppCompatActivity {
                 if(task.isSuccessful()){
                     Toast.makeText(DriverRegLoginActivity.this, "Успешный вход", Toast.LENGTH_SHORT).show();
                     loadingBar.dismiss();
-                    Intent driverIntent = new Intent(DriverRegLoginActivity.this, DriversMapActivity.class);
-                    startActivity(driverIntent);
+                    CurrentUser = mAuth.getCurrentUser();
+                    openMap();
+                    /*if(getUserInformationStatus) {
+                        Toast.makeText(DriverRegLoginActivity.this, "Успешный вход", Toast.LENGTH_SHORT).show();
+                        loadingBar.dismiss();
+                        Intent driverIntent = new Intent(DriverRegLoginActivity.this, DriversMapActivity.class);
+                        startActivity(driverIntent);
+                    } else {
+                        Toast.makeText(DriverRegLoginActivity.this, "Успешный вход", Toast.LENGTH_SHORT).show();
+                        loadingBar.dismiss();
+                        Intent driverIntent = new Intent(DriverRegLoginActivity.this, DriverSettingsActivity.class);
+                        driverIntent.putExtra("type", "Drivers");
+                        startActivity(driverIntent);
+                    }*/
                 }
                 else{
                     Toast.makeText(DriverRegLoginActivity.this, "Ошибка Авторизации", Toast.LENGTH_SHORT).show();
@@ -160,8 +179,8 @@ public class DriverRegLoginActivity extends AppCompatActivity {
                         child("Users").child("Drivers").child(OnlineDriverID);
                 DriverDatabaseRef.setValue(true); //Помещение информации о заказчике в отдельную папку Users->Drivers со своими данными
 
-
-                Intent driverIntent = new Intent(DriverRegLoginActivity.this, DriversMapActivity.class);
+                Intent driverIntent = new Intent(DriverRegLoginActivity.this, DriverSettingsActivity.class);
+                driverIntent.putExtra("type", "Drivers");
                 startActivity(driverIntent);
 
                 Toast.makeText(DriverRegLoginActivity.this, "Регистрация прошла успешно", Toast.LENGTH_SHORT).show();

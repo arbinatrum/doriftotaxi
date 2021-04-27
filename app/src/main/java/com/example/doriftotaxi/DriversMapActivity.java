@@ -78,8 +78,6 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_drivers_map);
 
-
-
         Button logoutDriverButton = (Button) findViewById(R.id.driver_logout_button);
         Button settingsDriverButton = (Button) findViewById(R.id.driver_settings_button);
         DriverApprovedButton = (Button)findViewById(R.id.driver_Approved_button);
@@ -228,7 +226,6 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
     }
 
     private void LogoutDriver() {
-
         Intent welcomeIntent = new Intent(DriversMapActivity.this, WelcomeActivity.class);
         startActivity(welcomeIntent);
         finish();

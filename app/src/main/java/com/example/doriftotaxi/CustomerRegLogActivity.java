@@ -109,7 +109,13 @@ public class CustomerRegLogActivity extends AppCompatActivity {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 if(snapshot.child("Users").child("Drivers").child(CurrentUser.getUid()).exists()){
-                    startActivity(new Intent(CustomerRegLogActivity.this, DriversMapActivity.class));
+                    if(snapshot.child("Users").child("Drivers").child(CurrentUser.getUid()).getChildrenCount() == 0){
+                        Intent driverIntent = new Intent(CustomerRegLogActivity.this, DriverSettingsActivity.class);
+                        driverIntent.putExtra("type", "Drivers");
+                        startActivity(driverIntent);
+                    } else {
+                        startActivity(new Intent(CustomerRegLogActivity.this, DriversMapActivity.class));
+                    }
                 }else if(snapshot.child("Users").child("Customers").child(CurrentUser.getUid()).exists()){
                     startActivity(new Intent(CustomerRegLogActivity.this, CustomersMapActivity.class));
                 }

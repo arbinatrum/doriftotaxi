@@ -20,6 +20,7 @@ import com.google.android.gms.tasks.Continuation;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -46,6 +47,7 @@ public class DriverSettingsActivity extends AppCompatActivity {
     private TextView imageChangeBtn;
 
     private FirebaseAuth mAuth;
+    private FirebaseUser CurrentUser;
     private DatabaseReference databaseReference;
 
     private Uri imageUri;
@@ -54,6 +56,7 @@ public class DriverSettingsActivity extends AppCompatActivity {
     private StorageReference storageProfileImageRef;
 
     private String checker = "";
+    private Boolean getUserInformationStatus = true;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -72,8 +75,11 @@ public class DriverSettingsActivity extends AppCompatActivity {
         imageChangeBtn = findViewById(R.id.change_photo_btn);
         mAuth = FirebaseAuth.getInstance();
         databaseReference = FirebaseDatabase.getInstance().getReference().child("Users").child(getType);
-
         storageProfileImageRef = FirebaseStorage.getInstance().getReference().child("Profile Pictures");
+
+        if(mAuth.getCurrentUser() == null){
+            startActivity(new Intent(DriverSettingsActivity.this, WelcomeActivity.class));
+        }
 
         if(getType.equals("Customers")){
             nameET.setHint("Имя");
@@ -89,11 +95,15 @@ public class DriverSettingsActivity extends AppCompatActivity {
         backBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if(getType.equals("Drivers")) {
-                    startActivity(new Intent(DriverSettingsActivity.this, DriversMapActivity.class));
-                }
-                else {
-                    startActivity(new Intent(DriverSettingsActivity.this, CustomersMapActivity.class));
+                if(getUserInformationStatus) {
+                    if (getType.equals("Drivers")) {
+                        startActivity(new Intent(DriverSettingsActivity.this, DriversMapActivity.class));
+                    } else {
+                        startActivity(new Intent(DriverSettingsActivity.this, CustomersMapActivity.class));
+                    }
+                } else {
+                    mAuth.signOut();//Выход из аутентификации
+                    LogoutDriver();//Переход обратно на экран выбора пользователя
                 }
             }
         });
@@ -120,6 +130,12 @@ public class DriverSettingsActivity extends AppCompatActivity {
         });
 
         getUserInformation();
+    }
+
+    private void LogoutDriver() {
+        Intent welcomeIntent = new Intent(DriverSettingsActivity.this, DriverRegLoginActivity.class);
+        startActivity(welcomeIntent);
+        finish();
     }
 
     @Override
@@ -169,6 +185,7 @@ public class DriverSettingsActivity extends AppCompatActivity {
 
     }
 
+    //Метод для отправки данных вместе с фото
     private void uploadProfileImage() {
         final ProgressDialog progressDialog = new ProgressDialog(this);
         progressDialog.setTitle("Загрузка информации");
@@ -210,13 +227,12 @@ public class DriverSettingsActivity extends AppCompatActivity {
                      //Отправляем все данные, включая картинку в FirebaseDatabase
 
                      progressDialog.dismiss();
+
                      if (getType.equals("Drivers")) {
                          Intent intent = new Intent(DriverSettingsActivity.this, DriversMapActivity.class);
-                         intent.putExtra("type", "Ready!");
                          startActivity(intent);
                      } else {
                          Intent intent = new Intent(DriverSettingsActivity.this, CustomersMapActivity.class);
-                         intent.putExtra("type", "Ready!");
                          startActivity(intent);
                      }
                  }
@@ -228,6 +244,7 @@ public class DriverSettingsActivity extends AppCompatActivity {
         }
     }
 
+    //Метод для отправки данных без фото
     private void ValidateAndSaveOnlyInformation() {
         if(getType.equals("Drivers")) {
             if (TextUtils.isEmpty(nameET.getText().toString())) {
@@ -241,36 +258,51 @@ public class DriverSettingsActivity extends AppCompatActivity {
             }
             else if (TextUtils.isEmpty(carNumberET.getText().toString())) {
                 Toast.makeText(this, "Заполните поле Номер машины", Toast.LENGTH_SHORT).show();
+            } else {
+                final ProgressDialog progressDialog = new ProgressDialog(this);
+                progressDialog.setTitle("Загрузка информации");
+                progressDialog.setMessage("Пожалуйста, подождите");
+                progressDialog.show();
+
+                HashMap<String, Object> userMap = new HashMap<>();
+                userMap.put("uid", mAuth.getCurrentUser().getUid());
+                userMap.put("name", nameET.getText().toString());
+                userMap.put("phone", phoneET.getText().toString());
+                userMap.put("carmodel", carET.getText().toString());
+                userMap.put("carnumber", carNumberET.getText().toString());
+
+                databaseReference.child(mAuth.getCurrentUser().getUid()).updateChildren(userMap);
+                //Отправляем только текстовые данные, без картинки
+
+                progressDialog.dismiss();
+
+                Intent intent = new Intent(DriverSettingsActivity.this, DriversMapActivity.class);
+                startActivity(intent);
             }
+
         }else {
             if (TextUtils.isEmpty(nameET.getText().toString())) {
                 Toast.makeText(this, "Заполните поле Имя", Toast.LENGTH_SHORT).show();
             } else if (TextUtils.isEmpty(phoneET.getText().toString())) {
                 Toast.makeText(this, "Заполните поле Номер телефона", Toast.LENGTH_SHORT).show();
             } else {
+                final ProgressDialog progressDialog = new ProgressDialog(this);
+                progressDialog.setTitle("Загрузка информации");
+                progressDialog.setMessage("Пожалуйста, подождите");
+                progressDialog.show();
+
                 HashMap<String, Object> userMap = new HashMap<>();
                 userMap.put("uid", mAuth.getCurrentUser().getUid());
                 userMap.put("name", nameET.getText().toString());
                 userMap.put("phone", phoneET.getText().toString());
 
-
-                if (getType.equals("Drivers")) {
-                    userMap.put("carmodel", carET.getText().toString());
-                    userMap.put("carnumber", carNumberET.getText().toString());
-                }
-
                 databaseReference.child(mAuth.getCurrentUser().getUid()).updateChildren(userMap);
-                //Отправляем все данные, включая картинку в FirebaseDatabase
+                //Отправляем только текстовые данные, без картинки
 
-                if (getType.equals("Drivers")) {
-                    Intent intent = new Intent(DriverSettingsActivity.this, DriversMapActivity.class);
-                    intent.putExtra("type", "Ready!");
-                    startActivity(intent);
-                } else {
-                    Intent intent = new Intent(DriverSettingsActivity.this, CustomersMapActivity.class);
-                    intent.putExtra("type", "Ready!");
-                    startActivity(intent);
-                }
+                progressDialog.dismiss();
+
+                Intent intent = new Intent(DriverSettingsActivity.this, CustomersMapActivity.class);
+                startActivity(intent);
             }
         }
     }
@@ -294,6 +326,10 @@ public class DriverSettingsActivity extends AppCompatActivity {
                             String image = snapshot.child("image").getValue().toString();
                             Picasso.get().load(image).into(circleImageView);
                         }
+                    }
+                } else {
+                    if(getType.equals("Drivers")) {
+                        getUserInformationStatus = false;
                     }
                 }
             }

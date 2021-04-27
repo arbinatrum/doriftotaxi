@@ -2,12 +2,15 @@ package com.example.doriftotaxi;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.constraintlayout.widget.ConstraintLayout;
+import androidx.coordinatorlayout.widget.CoordinatorLayout;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.FragmentActivity;
 
 import android.Manifest;
 import android.accessibilityservice.AccessibilityService;
+import android.app.Dialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -16,6 +19,7 @@ import android.location.LocationManager;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.view.View;
+import android.view.Window;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
@@ -69,18 +73,19 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
 
     //Кнопки интерфейса
     Button customerLogoutButton, settingsButton;
+
+    //Кнопки и элементы Нижнего Листа
+    private BottomSheetBehavior<CoordinatorLayout> bottomSheetBehavior; //сам нижний лист
+    private Button callTaxiButton;
+
+
+
+    //Токены и буллеаны
     String customerID;
     LatLng CustomerPosition;
     int radius = 1;
     Boolean driverFound = false, requestType = false, status = true;
     String driverFoundID;
-    /*private BottomSheetBehavior<LinearLayout> bottomSheetBehavior;
-    private LinearLayout bottomSheet;*/
-
-    private boolean close = true;
-
-    //Нижний лист
-    //Button callTaxiButton;
 
     //Информация о такси
     private TextView txtName, txtPhone, txtCar;
@@ -105,22 +110,38 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_customers_map);
 
-        String getType = getIntent().getStringExtra("type");
+        /*String getType = getIntent().getStringExtra("type");
 
         if (getType != null) {
             if (getType.equals("Ready!")) {
                 Toast.makeText(this, "Данные успешно сохранены!", Toast.LENGTH_SHORT).show();
             }
-        }
+        }*/
+
+
+        //Элементы нижнего листа
+        callTaxiButton = (Button)findViewById(R.id.customer_order_button);
+        CoordinatorLayout container = findViewById(R.id.bottomSheetContainer);
+
+        bottomSheetBehavior = BottomSheetBehavior.from(container);
+        bottomSheetBehavior.addBottomSheetCallback(new BottomSheetBehavior.BottomSheetCallback() {
+            @Override
+            public void onStateChanged(@NonNull View bottomSheet, int newState) {
+
+            }
+
+            @Override
+            public void onSlide(@NonNull View bottomSheet, float slideOffset) {
+
+            }
+        });
+
+
 
         //Кнопки интерфейса
         customerLogoutButton = (Button) findViewById(R.id.customer_logout_button);
         settingsButton = (Button) findViewById(R.id.customer_settings_button);
-        //callTaxiButton = (Button) findViewById(R.id.customer_order_button);
 
-        //Нижний лист
-        //bottomSheet = (LinearLayout) findViewById(R.id.bottomSheetContainer);
-        //bottomSheetBehavior = BottomSheetBehavior.from(bottomSheet);
 
         //Информация о такси
         txtName = (TextView) findViewById(R.id.driver_name);
@@ -137,8 +158,11 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
         DriversAvailableRef = FirebaseDatabase.getInstance().getReference().child("Driver Available"); //Обращаемся к доступным водителям
         DriversLocationRef = FirebaseDatabase.getInstance().getReference().child("Driver Working"); //Обращаемся к водителям в работе
 
+        //Информационный блок о таксисте
         RelInfo.setVisibility(View.INVISIBLE);
         RelInfo.setEnabled(false);
+        infoButton.setVisibility(View.INVISIBLE);
+        infoButton.setEnabled(false);
 
 
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
@@ -174,37 +198,14 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
                 Удаляем все маркеры с карты и меняем название кнопки на Вызвать такси.
                 */
 
-        /*callTaxiButton.setOnClickListener(new View.OnClickListener() {
+        //bottomSheetClose();
+
+        callTaxiButton.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onClick(View v) {
-                if (!requestType){
-                    //Добавить код на определение количества дочерних элементов у заказчика: if countchildren > 1 {выполняем код ниже} else {Выдаем Toast на необходимость бобавления данных о себе}
-
-                    checkBottomSheet();
-
-                    infoButton.setText("Отменить поиск такси");
-                    requestType = true;
-
-                    //Устанавливаем новую полку в БД RequestType и записываем туда месторасположение заказчика и его ID
-                    GeoFire geoFire = new GeoFire(CustomerDatabaseReference);
-                    geoFire.setLocation(customerID, new GeoLocation(lastLocation.getLatitude(), lastLocation.getLongitude()));
-
-                    //Установка геопозиции заказчика на карте
-                    CustomerPosition = new LatLng(lastLocation.getLatitude(), lastLocation.getLongitude());
-                    PickUpMarker = mMap.addMarker(new MarkerOptions().position(CustomerPosition).title("Я нахожусь здесь"));
-
-                    showLocation(lastLocation, 10); //Зум камеры при поиске
-
-                    getNearbyDrivers(); //Начинаем поиск водителей
-                }
-            }
-        });*/
-
-        infoButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (requestType) {
-                    //heckBottomSheet();
+            public void onClick(View v)
+            {
+                if (requestType)
+                {
                     requestType = false;
                     if (geoQuery != null) { //Обнуляем позицию водителя
                         geoQuery.removeAllListeners();
@@ -220,7 +221,10 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
                     radius = 1;
 
                     GeoFire geoFire = new GeoFire(CustomerDatabaseReference);
+                    CustomerDatabaseReference.child(customerID).removeValue();
                     geoFire.removeLocation(customerID);
+
+                    callTaxiButton.setText("Начать поиск");
 
                     if (PickUpMarker != null) {
                         PickUpMarker.remove();
@@ -229,24 +233,25 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
                     if (driverMarker != null) {
                         driverMarker.remove();
                     }
+                }
+                else {
+                    //Добавить код на определение количества дочерних элементов у заказчика: if countchildren > 1 {выполняем код ниже} else {Выдаем Toast на необходимость бобавления данных о себе}
+                    //else Toast.makeText(CustomersMapActivity.this, "Нет информации о вас", Toast.LENGTH_SHORT).show();
+                    requestType = true;
 
-                    infoButton.setText("Начать поиск такси");
-                } else {
-                        //Добавить код на определение количества дочерних элементов у заказчика: if countchildren > 1 {выполняем код ниже} else {Выдаем Toast на необходимость бобавления данных о себе}
-                        requestType = true;
+                    //Установка геопозиции заказчика на карте
+                    CustomerPosition = new LatLng(lastLocation.getLatitude(), lastLocation.getLongitude());
+                    PickUpMarker = mMap.addMarker(new MarkerOptions().position(CustomerPosition).title("Я нахожусь здесь"));
 
-                        //Устанавливаем новую полку в БД RequestType и записываем туда месторасположение заказчика и его ID
-                        GeoFire geoFire = new GeoFire(CustomerDatabaseReference);
-                        geoFire.setLocation(customerID, new GeoLocation(lastLocation.getLatitude(), lastLocation.getLongitude()));
+                    //showLocation(lastLocation, 10); //Зум камеры при поиске
+                    callTaxiButton.setText("Отменить поиск такси");
+                    //getNearbyDrivers(); //Начинаем поиск водителей
 
-                        //Установка геопозиции заказчика на карте
-                        CustomerPosition = new LatLng(lastLocation.getLatitude(), lastLocation.getLongitude());
-                        PickUpMarker = mMap.addMarker(new MarkerOptions().position(CustomerPosition).title("Я нахожусь здесь"));
+                    //Устанавливаем новую полку в БД RequestType и записываем туда месторасположение заказчика и его ID
+                    GeoFire geoFire = new GeoFire(CustomerDatabaseReference);
+                    geoFire.setLocation(customerID, new GeoLocation(lastLocation.getLatitude(), lastLocation.getLongitude()));
 
-                        showLocation(lastLocation, 10); //Зум камеры при поиске
-                        infoButton.setText("Отменить поиск такси");
-                        getNearbyDrivers(); //Начинаем поиск водителей
-                } //else Toast.makeText(CustomersMapActivity.this, "Нет доступных таксистов!", Toast.LENGTH_SHORT).show();
+                }
             }
         });
     }
@@ -305,6 +310,7 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
             showLocation(lastLocation, 18);
         }
         status = false;
+        //Тут можно добавить метод вывода всех таксистов на карте
     }
 
     //Метод обновления камеры вынесен отдельно
@@ -487,24 +493,6 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
             bottomSheetBehavior.setHideable(false);
         }
     }*/
-
-    private  boolean checkAvailableDrivers(){
-        final boolean[] make = new boolean[1];
-        DriversAvailableRefListener = DriversAvailableRef.addValueEventListener(new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot snapshot) {
-                make[0] = snapshot.exists();
-            }
-
-            @Override
-            public void onCancelled(@NonNull DatabaseError error) {
-
-            }
-        });
-        DriversAvailableRef.removeEventListener(DriversAvailableRefListener);
-
-        return make[0];
-    }
 
     private void showLinearInfo(){
         DatabaseReference reference = FirebaseDatabase.getInstance().getReference()
