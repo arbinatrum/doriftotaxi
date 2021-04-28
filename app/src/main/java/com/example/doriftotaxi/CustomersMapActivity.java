@@ -18,6 +18,7 @@ import android.location.Location;
 import android.location.LocationManager;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.util.Log;
 import android.view.View;
 import android.view.Window;
 import android.widget.Button;
@@ -31,6 +32,7 @@ import com.firebase.geofire.GeoLocation;
 import com.firebase.geofire.GeoQuery;
 import com.firebase.geofire.GeoQueryEventListener;
 import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.GooglePlayServicesUtil;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
@@ -64,6 +66,8 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
         com.google.android.gms.location.LocationListener {
 
     private static final int ACCES_LOCATION_REQUEST_CODE = 10001;
+    private static final int MY_PERMISSION_REQUEST_CODE = 7192;
+    private static final int PLAY_SERVICES_RESOLUTION_REQUEST = 300193;
     private GoogleMap mMap;
     GoogleApiClient googleApiClient;
     Location lastLocation;
@@ -118,9 +122,8 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
             }
         }*/
 
-
         //Элементы нижнего листа
-        callTaxiButton = (Button)findViewById(R.id.customer_order_button);
+        callTaxiButton = findViewById(R.id.customer_order_button);
         CoordinatorLayout container = findViewById(R.id.bottomSheetContainer);
 
         bottomSheetBehavior = BottomSheetBehavior.from(container);
@@ -135,7 +138,6 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
 
             }
         });
-
 
 
         //Кнопки интерфейса
@@ -163,13 +165,6 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
         RelInfo.setEnabled(false);
         infoButton.setVisibility(View.INVISIBLE);
         infoButton.setEnabled(false);
-
-
-        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
-                .findFragmentById(R.id.map);
-        mapFragment.getMapAsync(this);
-
-        //Здесь необходимо боавить новый метод на запрос включения GPS
 
         customerLogoutButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -238,22 +233,125 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
                     //Добавить код на определение количества дочерних элементов у заказчика: if countchildren > 1 {выполняем код ниже} else {Выдаем Toast на необходимость бобавления данных о себе}
                     //else Toast.makeText(CustomersMapActivity.this, "Нет информации о вас", Toast.LENGTH_SHORT).show();
                     requestType = true;
+                    status = false;
 
-                    //Установка геопозиции заказчика на карте
-                    CustomerPosition = new LatLng(lastLocation.getLatitude(), lastLocation.getLongitude());
-                    PickUpMarker = mMap.addMarker(new MarkerOptions().position(CustomerPosition).title("Я нахожусь здесь"));
+                    //mLastLocation = LocationServices.FusedLocationApi.getLastLocation(mGo)
 
-                    //showLocation(lastLocation, 10); //Зум камеры при поиске
-                    callTaxiButton.setText("Отменить поиск такси");
+
                     //getNearbyDrivers(); //Начинаем поиск водителей
 
                     //Устанавливаем новую полку в БД RequestType и записываем туда месторасположение заказчика и его ID
                     GeoFire geoFire = new GeoFire(CustomerDatabaseReference);
-                    geoFire.setLocation(customerID, new GeoLocation(lastLocation.getLatitude(), lastLocation.getLongitude()));
+                    geoFire.setLocation(customerID, new GeoLocation(lastLocation.getLatitude(), lastLocation.getLongitude()), new GeoFire.CompletionListener() {
+                        @Override
+                        public void onComplete(String key, DatabaseError error) {
+                            //Установка геопозиции заказчика на карте
+                            CustomerPosition = new LatLng(lastLocation.getLatitude(), lastLocation.getLongitude());
+                            PickUpMarker = mMap.addMarker(new MarkerOptions().position(CustomerPosition).title("Я нахожусь здесь"));
+                            mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(lastLocation.getLatitude(),lastLocation.getLongitude()), 12.0f));
 
+                            //showLocation(lastLocation, 10); //Зум камеры при поиске
+                            callTaxiButton.setText("Отменить поиск такси");
+                        }
+                    });
                 }
             }
         });
+
+        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
+                .findFragmentById(R.id.map);
+        mapFragment.getMapAsync(this);
+        setUpLocation();
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        switch (requestCode){
+            case MY_PERMISSION_REQUEST_CODE:
+                if(grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED){
+                    if(checkPlayServices()) {
+                        buildGoogleApiClient();
+                        createLocationRequest();
+                        displayLocation();
+                    }
+                }
+                break;
+        }
+    }
+
+    private void setUpLocation(){
+        if(ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
+                ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, new String[]{
+                    Manifest.permission.ACCESS_COARSE_LOCATION,
+                    Manifest.permission.ACCESS_FINE_LOCATION
+            }, MY_PERMISSION_REQUEST_CODE);
+        } else {
+            if(checkPlayServices()) {
+                buildGoogleApiClient();
+                createLocationRequest();
+                displayLocation();
+            }
+        }
+    }
+
+    private void displayLocation() {
+        if(ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
+                ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            return;
+        }
+        lastLocation = LocationServices.FusedLocationApi.getLastLocation(googleApiClient);
+        if(lastLocation != null){
+            Log.d("Arbinatrum", String.format("Моя локация тут: %f / %f", lastLocation.getLatitude(),lastLocation.getLongitude()));
+            if(status){
+                status = false;
+                showLocation(lastLocation, 18);
+            }
+            //Тут можно сделать подачу данных о пользователе в firebase, можно сделать через флаг
+            //Необходимо создать новый geoFire экземпляр, он будет для заказчика и будет обновляться в этом методе
+            GeoFire geoFire = new GeoFire(CustomerDatabaseReference);
+            geoFire.setLocation(customerID, new GeoLocation(lastLocation.getLatitude(), lastLocation.getLongitude()), new GeoFire.CompletionListener() {
+                @Override
+                public void onComplete(String key, DatabaseError error) {
+                    //Установка геопозиции заказчика на карте
+                    if(PickUpMarker != null) PickUpMarker.remove();
+
+                    PickUpMarker = mMap.addMarker(new MarkerOptions()
+                            .position(new LatLng(lastLocation.getLatitude(),lastLocation.getLongitude()))
+                            .title("Ваша локация"));
+                    //Анимация Камеры
+                    mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(lastLocation.getLatitude(),lastLocation.getLongitude()), 12.0f));
+                    CustomerPosition = new LatLng(lastLocation.getLatitude(), lastLocation.getLongitude());
+                    PickUpMarker = mMap.addMarker(new MarkerOptions().position(CustomerPosition).title("Я нахожусь здесь"));
+                    mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(lastLocation.getLatitude(),lastLocation.getLongitude()), 12.0f));
+
+                    //showLocation(lastLocation, 10); //Зум камеры при поиске
+                    callTaxiButton.setText("Отменить поиск такси");
+                }
+            });
+        } else {
+            Log.d("Arbinatrum","Нет вашей локации");
+        }
+    }
+
+    private void createLocationRequest() {
+        locationRequest = new LocationRequest();
+        locationRequest.setInterval(1000); //Интервал обновления геолокации
+        locationRequest.setFastestInterval(1000);
+        locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+        locationRequest.setSmallestDisplacement(10);
+    }
+
+    private boolean checkPlayServices() {
+        int resultCode = GooglePlayServicesUtil.isGooglePlayServicesAvailable(this);
+        if(resultCode != ConnectionResult.SUCCESS){
+            if(GooglePlayServicesUtil.isUserRecoverableError(resultCode))
+                GooglePlayServicesUtil.getErrorDialog(resultCode, this,PLAY_SERVICES_RESOLUTION_REQUEST).show();
+            else {
+                Toast.makeText(this,"Данный девайс не поддерживается",Toast.LENGTH_SHORT).show();
+                finish();
+            } return false;
+        }return true;
     }
 
     //Отрисовка карты
@@ -261,11 +359,6 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
 
-        buildGoogleApiClient();
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                return;
-        } //Если предоставлены доступы, то даем добро на получение локации
-        mMap.setMyLocationEnabled(true);
     }
 
     private void buildGoogleApiClient() {
@@ -280,21 +373,21 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
 
     @Override
     public void onConnected(@Nullable Bundle bundle) {
-        locationRequest = new LocationRequest();
-        locationRequest.setInterval(1000); //Интервал обновления геолокации
-        locationRequest.setFastestInterval(1000);
-        locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+        displayLocation();
+        startLocationUpdates();
+    }
 
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+    private void startLocationUpdates() {
+        if(ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
+                ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             return;
-        } //Если выданы пермишны на геолокацию, то получаем данные о своем месторасположении
-
+        }
         LocationServices.FusedLocationApi.requestLocationUpdates(googleApiClient, locationRequest, this);
     }
 
     @Override
     public void onConnectionSuspended(int i) {
-
+        googleApiClient.connect();
     }
 
     @Override
@@ -305,11 +398,7 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
     @Override
     public void onLocationChanged(Location location) {
         lastLocation = location;
-
-        if(status){
-            showLocation(lastLocation, 18);
-        }
-        status = false;
+        displayLocation();
         //Тут можно добавить метод вывода всех таксистов на карте
     }
 
