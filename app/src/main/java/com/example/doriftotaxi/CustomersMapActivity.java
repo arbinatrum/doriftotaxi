@@ -31,6 +31,7 @@ import com.firebase.geofire.GeoFire;
 import com.firebase.geofire.GeoLocation;
 import com.firebase.geofire.GeoQuery;
 import com.firebase.geofire.GeoQueryEventListener;
+import com.firebase.geofire.LocationCallback;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GooglePlayServicesUtil;
 import com.google.android.gms.common.api.GoogleApiClient;
@@ -55,6 +56,7 @@ import com.google.firebase.database.Query;
 import com.google.firebase.database.ValueEventListener;
 import com.squareup.picasso.Picasso;
 
+import java.util.EventListener;
 import java.util.HashMap;
 import java.util.List;
 
@@ -74,6 +76,7 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
     LocationRequest locationRequest;
     Marker driverMarker, PickUpMarker;
     GeoQuery geoQuery;
+    GeoFire geoFire1;
 
     //Кнопки интерфейса
     Button customerLogoutButton, settingsButton;
@@ -82,13 +85,12 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
     private BottomSheetBehavior<CoordinatorLayout> bottomSheetBehavior; //сам нижний лист
     private Button callTaxiButton;
 
-
-
     //Токены и буллеаны
     String customerID;
     LatLng CustomerPosition;
     int radius = 1;
     Boolean driverFound = false, requestType = false, status = true;
+    Boolean StateCustomer = true;
     String driverFoundID;
 
     //Информация о такси
@@ -108,6 +110,8 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
 
     private ValueEventListener DriverLocationRefListener;
     private ValueEventListener DriversAvailableRefListener;
+    private ValueEventListener CustomerLocationRefListener;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -169,17 +173,25 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
         customerLogoutButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                mAuth.signOut();
-                LogoutCustomer();
+                if(requestType) {
+                    Toast.makeText(CustomersMapActivity.this,"Нельзя выходить во время поиска", Toast.LENGTH_SHORT).show();
+                } else {
+                    mAuth.signOut();
+                    LogoutCustomer();
+                }
             }
         });
 
         settingsButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Intent intent = new Intent(CustomersMapActivity.this, DriverSettingsActivity.class);
-                intent.putExtra("type", "Customers");
-                startActivity(intent);
+                if(requestType) {
+                    Toast.makeText(CustomersMapActivity.this,"Нельзя заходить в настройки во время поиска", Toast.LENGTH_SHORT).show();
+                } else {
+                    Intent intent = new Intent(CustomersMapActivity.this, DriverSettingsActivity.class);
+                    intent.putExtra("type", "Customers");
+                    startActivity(intent);
+                }
             }
         });
 
@@ -194,73 +206,73 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
                 */
 
         //bottomSheetClose();
-
+        getStateCustomer();
         callTaxiButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v)
             {
-                if (requestType)
-                {
-                    requestType = false;
-                    if (geoQuery != null) { //Обнуляем позицию водителя
-                        geoQuery.removeAllListeners();
-                        DriversLocationRef.removeEventListener(DriverLocationRefListener); //Отменяем обновление данных о геолокации водителя
-                    }
-                    if (driverFound) {
-                        DriversRef = FirebaseDatabase.getInstance().getReference()
-                                .child("Users").child("Drivers").child(driverFoundID).child("CustomerRideID");
-                        DriversRef.removeValue();
-                        driverFoundID = null;
-                    }
-                    driverFound = false;
-                    radius = 1;
-
-                    GeoFire geoFire = new GeoFire(CustomerDatabaseReference);
-                    CustomerDatabaseReference.child(customerID).removeValue();
-                    geoFire.removeLocation(customerID);
-
-                    callTaxiButton.setText("Начать поиск");
-
-                    if (PickUpMarker != null) {
-                        PickUpMarker.remove();
-                    }
-
-                    if (driverMarker != null) {
-                        driverMarker.remove();
-                    }
-                }
-                else {
-                    //Добавить код на определение количества дочерних элементов у заказчика: if countchildren > 1 {выполняем код ниже} else {Выдаем Toast на необходимость бобавления данных о себе}
-                    //else Toast.makeText(CustomersMapActivity.this, "Нет информации о вас", Toast.LENGTH_SHORT).show();
-                    requestType = true;
-                    status = false;
-
-                    //mLastLocation = LocationServices.FusedLocationApi.getLastLocation(mGo)
-
-
-                    //getNearbyDrivers(); //Начинаем поиск водителей
-
-                    //Устанавливаем новую полку в БД RequestType и записываем туда месторасположение заказчика и его ID
-                    GeoFire geoFire = new GeoFire(CustomerDatabaseReference);
-                    geoFire.setLocation(customerID, new GeoLocation(lastLocation.getLatitude(), lastLocation.getLongitude()), new GeoFire.CompletionListener() {
-                        @Override
-                        public void onComplete(String key, DatabaseError error) {
-                            //Установка геопозиции заказчика на карте
-                            CustomerPosition = new LatLng(lastLocation.getLatitude(), lastLocation.getLongitude());
-                            PickUpMarker = mMap.addMarker(new MarkerOptions().position(CustomerPosition).title("Я нахожусь здесь"));
-                            mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(lastLocation.getLatitude(),lastLocation.getLongitude()), 12.0f));
-
-                            //showLocation(lastLocation, 10); //Зум камеры при поиске
-                            callTaxiButton.setText("Отменить поиск такси");
+                if(StateCustomer) {
+                    if (requestType) {
+                        Log.d("status", "Запускаем отмену по кнопке");
+                        requestType = false;
+                        if (geoQuery != null) { //Обнуляем позицию водителя
+                            geoQuery.removeAllListeners();
+                            DriversLocationRef.removeEventListener(DriverLocationRefListener); //Отменяем обновление данных о геолокации водителя
+                            Log.d("status", "очищаем geoQuery");
                         }
-                    });
-                }
+                        if (driverFound) {
+                            DriversRef = FirebaseDatabase.getInstance().getReference()
+                                    .child("Users").child("Drivers").child(driverFoundID).child("CustomerRideID");
+                            DriversRef.removeValue();
+                            driverFoundID = null;
+                            Log.d("status", "очищаем driverFound");
+                        }
+                        driverFound = false;
+                        radius = 1;
+
+                        if (PickUpMarker != null) {
+                            PickUpMarker.remove();
+                            Log.d("status", "очищаем PickUpMarker в callTaxi");
+                        }
+
+                        if (driverMarker != null) {
+                            driverMarker.remove();
+                            Log.d("status", "очищаем driverMarker");
+                        }
+
+                        //CustomerDatabaseReference.child(customerID).removeValue();
+                        if (lastLocation != null) {
+                            geoFire1.removeLocation(customerID, new GeoFire.CompletionListener() {
+                                @Override
+                                public void onComplete(String key, DatabaseError error) {
+                                    Log.d("status", "Удаляем локацию в firebase, CustomerDatabaseReference.child(customerID).removeValue()");
+                                }
+                            });
+                        }
+
+                        callTaxiButton.setText("Начать поиск");
+                        Log.d("status", "меняем название кнопки на Начать поиск");
+
+                    } else {
+                        Log.d("status", "Запускаем поиск по кнопке");
+                        //Добавить код на определение количества дочерних элементов у заказчика: if countchildren > 1 {выполняем код ниже} else {Выдаем Toast на необходимость бобавления данных о себе}
+                        //else Toast.makeText(CustomersMapActivity.this, "Нет информации о вас", Toast.LENGTH_SHORT).show();
+                        requestType = true;
+                        callTaxiButton.setText("Отменить поиск такси");
+                        if (lastLocation != null) {
+                            mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(lastLocation.getLatitude(), lastLocation.getLongitude()), 18.0f));
+                        }
+                        displayLocation();
+                        //getNearbyDrivers(); //Начинаем поиск водителей
+                    }
+                } else Toast.makeText(CustomersMapActivity.this,"Необходимо заполнить данные о себе в настройках",Toast.LENGTH_SHORT).show();
             }
         });
 
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
+
         setUpLocation();
     }
 
@@ -300,37 +312,47 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
                 ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             return;
         }
+        if(CustomerLocationRefListener != null){
+            CustomerDatabaseReference.removeEventListener(CustomerLocationRefListener);
+        }
         lastLocation = LocationServices.FusedLocationApi.getLastLocation(googleApiClient);
         if(lastLocation != null){
-            Log.d("Arbinatrum", String.format("Моя локация тут: %f / %f", lastLocation.getLatitude(),lastLocation.getLongitude()));
+            Log.d("Status", String.format("Моя локация тут: %f / %f", lastLocation.getLatitude(),lastLocation.getLongitude()));
             if(status){
                 status = false;
                 showLocation(lastLocation, 18);
             }
             //Тут можно сделать подачу данных о пользователе в firebase, можно сделать через флаг
             //Необходимо создать новый geoFire экземпляр, он будет для заказчика и будет обновляться в этом методе
-            GeoFire geoFire = new GeoFire(CustomerDatabaseReference);
-            geoFire.setLocation(customerID, new GeoLocation(lastLocation.getLatitude(), lastLocation.getLongitude()), new GeoFire.CompletionListener() {
-                @Override
-                public void onComplete(String key, DatabaseError error) {
-                    //Установка геопозиции заказчика на карте
-                    if(PickUpMarker != null) PickUpMarker.remove();
 
-                    PickUpMarker = mMap.addMarker(new MarkerOptions()
-                            .position(new LatLng(lastLocation.getLatitude(),lastLocation.getLongitude()))
-                            .title("Ваша локация"));
-                    //Анимация Камеры
-                    mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(lastLocation.getLatitude(),lastLocation.getLongitude()), 12.0f));
-                    CustomerPosition = new LatLng(lastLocation.getLatitude(), lastLocation.getLongitude());
-                    PickUpMarker = mMap.addMarker(new MarkerOptions().position(CustomerPosition).title("Я нахожусь здесь"));
-                    mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(lastLocation.getLatitude(),lastLocation.getLongitude()), 12.0f));
+            CustomerPosition = new LatLng(lastLocation.getLatitude(), lastLocation.getLongitude());
 
-                    //showLocation(lastLocation, 10); //Зум камеры при поиске
-                    callTaxiButton.setText("Отменить поиск такси");
-                }
-            });
+            geoFire1 = new GeoFire(CustomerDatabaseReference);
+            if(requestType){
+                //allTaxiButton.setText("Отменить поиск такси");
+                geoFire1.setLocation(customerID, new GeoLocation(lastLocation.getLatitude(), lastLocation.getLongitude()), new GeoFire.CompletionListener() {
+                    @Override
+                    public void onComplete(String key, DatabaseError error) {
+                        if(error != null) {
+                            System.err.println("There was an error saving the location to GeoFire: " + error);
+                        } else {
+                            System.out.println("Location saved on server successfully!");
+                            //Установка геопозиции заказчика на карте
+                            if (PickUpMarker != null) PickUpMarker.remove();
+                            Log.d("status", "Отдаем локацию в firebase, setLocation");
+
+                            //Анимация Камеры
+                            PickUpMarker = mMap.addMarker(new MarkerOptions()
+                                    .position(CustomerPosition)
+                                    .title("Я нахожусь здесь"));
+                            //showLocation(lastLocation, 10); //Зум камеры при поиске
+                            Log.d("status", "Поставили маркер PickUpMarker в displayLocation");
+                        }
+                    }
+                });
+            }
         } else {
-            Log.d("Arbinatrum","Нет вашей локации");
+            Log.d("Status","Нет вашей локации");
         }
     }
 
@@ -358,6 +380,8 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
+        Log.d("status","Запустился onMapReady()");
+        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(55.755,37.61), 12.0f));
 
     }
 
@@ -392,7 +416,7 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
 
     @Override
     public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
-
+        Log.d("status","Запустился onConnectionFailed()");
     }
 
     @Override
@@ -413,18 +437,87 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
     @Override
     protected void onStop() {
         super.onStop();
-
+        Log.d("status","Запустился onStop()");
+        checkStatus();
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
 
+        Log.d("status","Запустился onDestroy()");
+
         if(requestType) {
             GeoFire geoFire = new GeoFire(CustomerDatabaseReference);
             geoFire.removeLocation(customerID);
             requestType = false;
         }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        Log.d("status","Запустился onResume()");
+        checkStatus();
+    }
+
+    private void checkStatus() {
+        CustomerLocationRefListener = CustomerDatabaseReference.child(customerID).child("l")
+                .addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                if(snapshot.exists()) {
+                    requestType = true;
+                    List<Object> customerLocationMap = (List<Object>) snapshot.getValue();
+                    double LocationLat = 0;
+                    double LocationLng = 0;
+
+                    if (customerLocationMap.get(0) != null){
+                        LocationLat = Double.parseDouble(customerLocationMap.get(0).toString());
+                        Log.d("status", String.format("LocationLat = %f", LocationLat));
+                    }
+                    if (customerLocationMap.get(1) != null){
+                        LocationLng = Double.parseDouble(customerLocationMap.get(1).toString());
+                        Log.d("status", String.format("LocationLat = %f", LocationLng));
+                    }
+
+                    if(PickUpMarker != null) { //Удалим маркер если он есть
+                        PickUpMarker.remove();
+                    }
+                    Location lastLocation = new Location("");
+                    lastLocation.setLatitude(LocationLat);
+                    lastLocation.setLongitude(LocationLng);
+
+                    CustomerPosition = new LatLng(lastLocation.getLatitude(),lastLocation.getLongitude());
+
+                    Log.d("status", "Отдаем локацию в firebase, setLocation");
+
+                    //Анимация Камеры
+                    PickUpMarker = mMap.addMarker(new MarkerOptions()
+                            .position(CustomerPosition)
+                            .title("Я нахожусь здесь"));
+
+                    mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(lastLocation.getLatitude(),lastLocation.getLongitude()),18.0f));
+
+                    callTaxiButton.setText("Отменить поиск такси");
+
+                    displayLocation();
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+
+            }
+        });
+    }
+
+    @Override
+    protected void onRestart() {
+        super.onRestart();
+
+        Log.d("status","Запустился onRestart()");
+        displayLocation();
     }
 
     //Выходим на начальный экран и выполняем логаут для Заказчика
@@ -605,6 +698,23 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
                         Picasso.get().load(image).into(DriverImageView);
                     }
                 }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+
+            }
+        });
+    }
+
+    private void getStateCustomer(){
+        DatabaseReference CustomerDatabaseRef = FirebaseDatabase.getInstance().getReference().child("Users").child("Customers").child(customerID);
+        CustomerDatabaseRef.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                if(snapshot.exists() && snapshot.getChildrenCount() > 1){
+                    StateCustomer = true;
+                } else StateCustomer = false;
             }
 
             @Override
