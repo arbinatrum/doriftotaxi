@@ -75,6 +75,22 @@ public class WelcomeActivity extends AppCompatActivity {
         checkPermissions();
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if(CurrentUser != null){
+            openMap();
+        }
+    }
+
+    @Override
+    protected void onRestart() {
+        super.onRestart();
+        if(CurrentUser != null){
+            openMap();
+        }
+    }
+
     private void openMap() {
         /*final ProgressDialog progressDialog = new ProgressDialog(this);
         progressDialog.setTitle("Загрузка информации");

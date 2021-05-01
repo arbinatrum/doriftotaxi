@@ -2,7 +2,7 @@
 <androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
+    android:layout_height="match_parent"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     tools:context=".CustomersMapActivity">
 
@@ -11,8 +11,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
-        <fragment xmlns:android="http://schemas.android.com/apk/res/android"
-            xmlns:tools="http://schemas.android.com/tools"
+        <fragment
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:id="@+id/map"
@@ -135,10 +134,13 @@
 
 
     </LinearLayout>
+
+
+
     </RelativeLayout>
 
-    <include layout="@layout/layout_bottom_sheet"/>
 
+    <include layout="@layout/layout_bottom_sheet"/>
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
 

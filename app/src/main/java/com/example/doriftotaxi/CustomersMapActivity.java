@@ -18,10 +18,14 @@ import android.location.Location;
 import android.location.LocationManager;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.View;
 import android.view.Window;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
@@ -56,6 +60,11 @@ import com.google.firebase.database.Query;
 import com.google.firebase.database.ValueEventListener;
 import com.squareup.picasso.Picasso;
 
+import net.yslibrary.android.keyboardvisibilityevent.KeyboardVisibilityEvent;
+import net.yslibrary.android.keyboardvisibilityevent.KeyboardVisibilityEventListener;
+import net.yslibrary.android.keyboardvisibilityevent.util.UIUtil;
+
+import java.security.Key;
 import java.util.EventListener;
 import java.util.HashMap;
 import java.util.List;
@@ -70,6 +79,8 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
     private static final int ACCES_LOCATION_REQUEST_CODE = 10001;
     private static final int MY_PERMISSION_REQUEST_CODE = 7192;
     private static final int PLAY_SERVICES_RESOLUTION_REQUEST = 300193;
+
+    private SupportMapFragment mapFragment;
     private GoogleMap mMap;
     GoogleApiClient googleApiClient;
     Location lastLocation;
@@ -84,6 +95,8 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
     //Кнопки и элементы Нижнего Листа
     private BottomSheetBehavior<CoordinatorLayout> bottomSheetBehavior; //сам нижний лист
     private Button callTaxiButton;
+    private EditText searchBarA, searchBarB;
+    private int beforeBottomSheetState;
 
     //Токены и буллеаны
     String customerID;
@@ -128,21 +141,34 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
 
         //Элементы нижнего листа
         callTaxiButton = findViewById(R.id.customer_order_button);
+        searchBarA = findViewById(R.id.search_bar_A);
+        searchBarB = findViewById(R.id.search_bar_B);
         CoordinatorLayout container = findViewById(R.id.bottomSheetContainer);
 
+
         bottomSheetBehavior = BottomSheetBehavior.from(container);
+        bottomSheetBehavior.setFitToContents(false);
+        bottomSheetBehavior.setHalfExpandedRatio(0.42f);
         bottomSheetBehavior.addBottomSheetCallback(new BottomSheetBehavior.BottomSheetCallback() {
             @Override
             public void onStateChanged(@NonNull View bottomSheet, int newState) {
-
+                Log.d("status Behavior",String.format("state is %d",bottomSheetBehavior.getState()));
+                beforeBottomSheetState = bottomSheetBehavior.getState();
+                /*if(beforeBottomSheetState == BottomSheetBehavior.STATE_HALF_EXPANDED){
+                    bottomSheetBehavior.setDraggable(false);
+                } else if(bottomSheetBehavior.getState() == BottomSheetBehavior.STATE_HALF_EXPANDED){
+                    bottomSheetBehavior.setDraggable(true);
+                }*/
             }
 
             @Override
             public void onSlide(@NonNull View bottomSheet, float slideOffset) {
-
+                Log.d("Status",String.format("Положения - %f",slideOffset));
+                if(slideOffset > 0.251 && !searchBarA.hasFocus() && !searchBarB.hasFocus()){
+                    bottomSheetBehavior.setState(BottomSheetBehavior.STATE_HALF_EXPANDED);
+                }
             }
         });
-
 
         //Кнопки интерфейса
         customerLogoutButton = (Button) findViewById(R.id.customer_logout_button);
@@ -195,8 +221,6 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
             }
         });
 
-        //Здесь также необходимо боавить новый метод на запрос включения GPS, если все таки пользователь включил GPS и предоставил доступы к приложению, то выполняем код ниже
-
                 /*
                 Если есть запрос на поиск водителей, но заказчик решил отменить поиск,
                 то удаляем всех видимых водителей, если они есть.
@@ -205,71 +229,118 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
                 Удаляем все маркеры с карты и меняем название кнопки на Вызвать такси.
                 */
 
-        //bottomSheetClose();
-        getStateCustomer();
+        searchBarA.setOnFocusChangeListener(new View.OnFocusChangeListener() {//Обработчик фокуса МП на первом поле ввода
+            @Override
+            public void onFocusChange(View view, boolean b) {
+                if(b){
+                    bottomSheetBehavior.setDraggable(true);
+                    if(bottomSheetBehavior.getState() == BottomSheetBehavior.STATE_HALF_EXPANDED){
+                        bottomSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
+                    }
+                    if(bottomSheetBehavior.getState() == BottomSheetBehavior.STATE_COLLAPSED){
+                        bottomSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
+                    }
+                    bottomSheetBehavior.setDraggable(false);
+                } else {
+                    if(!searchBarB.hasFocus()) {
+                        bottomSheetBehavior.setDraggable(true);
+                        bottomSheetBehavior.setState(BottomSheetBehavior.STATE_HALF_EXPANDED);
+                    }
+                }
+            }
+        });
+
+        searchBarB.setOnFocusChangeListener(new View.OnFocusChangeListener() {//Обработчик фокуса МП на втором поле ввода
+            @Override
+            public void onFocusChange(View view, boolean b) {
+                if(b){
+                    bottomSheetBehavior.setDraggable(true);
+                    if(bottomSheetBehavior.getState() == BottomSheetBehavior.STATE_HALF_EXPANDED){
+                        bottomSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
+                    }
+                    if(bottomSheetBehavior.getState() == BottomSheetBehavior.STATE_COLLAPSED){
+                        bottomSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
+                    }
+                    bottomSheetBehavior.setDraggable(false);
+                } else {
+                    bottomSheetBehavior.setDraggable(true);
+                    bottomSheetBehavior.setState(BottomSheetBehavior.STATE_HALF_EXPANDED);
+                }
+            }
+        });
+
+        KeyboardVisibilityEvent.setEventListener(this, new KeyboardVisibilityEventListener() { //Слушатель клавиатуры
+            @Override
+            public void onVisibilityChanged(boolean isOpen) {
+                if(!isOpen){
+                    searchBarA.clearFocus();
+                    searchBarB.clearFocus();
+                    bottomSheetBehavior.setDraggable(true);
+                }
+            }
+        });
+
+        //Заготовка под поиск
+        //searchBarA.addTextChangedListener(new TextWatcher() {
+
+
+        getStateCustomer(); //Метод для определения наличия информации о заказчике
         callTaxiButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v)
             {
-                if(StateCustomer) {
-                    if (requestType) {
-                        Log.d("status", "Запускаем отмену по кнопке");
-                        requestType = false;
-                        if (geoQuery != null) { //Обнуляем позицию водителя
-                            geoQuery.removeAllListeners();
-                            DriversLocationRef.removeEventListener(DriverLocationRefListener); //Отменяем обновление данных о геолокации водителя
-                            Log.d("status", "очищаем geoQuery");
-                        }
-                        if (driverFound) {
-                            DriversRef = FirebaseDatabase.getInstance().getReference()
-                                    .child("Users").child("Drivers").child(driverFoundID).child("CustomerRideID");
-                            DriversRef.removeValue();
-                            driverFoundID = null;
-                            Log.d("status", "очищаем driverFound");
-                        }
-                        driverFound = false;
-                        radius = 1;
+                if(searchBarA.length() > 0 && searchBarB.length() > 0) { //Проверяем заполненные поля
+                    if (StateCustomer) { //Проверяем есть ли информации о заказчике в БД
+                        if (requestType) { //Проверяем есть ли запрос на поездку
+                            Log.d("status", "Запускаем отмену по кнопке");
+                            requestType = false;
+                            if (geoQuery != null) { //Обнуляем позицию водителя
+                                geoQuery.removeAllListeners();
+                                DriversLocationRef.removeEventListener(DriverLocationRefListener); //Отменяем обновление данных о геолокации водителя
+                                Log.d("status", "очищаем geoQuery");
+                            }
+                            if (driverFound) {
+                                DriversRef = FirebaseDatabase.getInstance().getReference()
+                                        .child("Users").child("Drivers").child(driverFoundID).child("CustomerRideID");
+                                DriversRef.removeValue();
+                                driverFoundID = null;
+                                Log.d("status", "очищаем driverFound");
+                            }
+                            driverFound = false;
+                            radius = 1;
 
-                        if (PickUpMarker != null) {
-                            PickUpMarker.remove();
-                            Log.d("status", "очищаем PickUpMarker в callTaxi");
-                        }
+                            if (PickUpMarker != null) {
+                                PickUpMarker.remove();
+                                Log.d("status", "очищаем PickUpMarker в callTaxi");
+                            }
 
-                        if (driverMarker != null) {
-                            driverMarker.remove();
-                            Log.d("status", "очищаем driverMarker");
-                        }
+                            if (driverMarker != null) {
+                                driverMarker.remove();
+                                Log.d("status", "очищаем driverMarker");
+                            }
 
-                        //CustomerDatabaseReference.child(customerID).removeValue();
-                        if (lastLocation != null) {
-                            geoFire1.removeLocation(customerID, new GeoFire.CompletionListener() {
-                                @Override
-                                public void onComplete(String key, DatabaseError error) {
-                                    Log.d("status", "Удаляем локацию в firebase, CustomerDatabaseReference.child(customerID).removeValue()");
-                                }
-                            });
-                        }
+                            geoFire1.removeLocation(customerID); //Удаляем из БД запрос
 
-                        callTaxiButton.setText("Начать поиск");
-                        Log.d("status", "меняем название кнопки на Начать поиск");
+                            callTaxiButton.setText("Начать поиск");
+                            Log.d("status", "меняем название кнопки на Начать поиск");
 
-                    } else {
-                        Log.d("status", "Запускаем поиск по кнопке");
-                        //Добавить код на определение количества дочерних элементов у заказчика: if countchildren > 1 {выполняем код ниже} else {Выдаем Toast на необходимость бобавления данных о себе}
-                        //else Toast.makeText(CustomersMapActivity.this, "Нет информации о вас", Toast.LENGTH_SHORT).show();
-                        requestType = true;
-                        callTaxiButton.setText("Отменить поиск такси");
-                        if (lastLocation != null) {
-                            mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(lastLocation.getLatitude(), lastLocation.getLongitude()), 18.0f));
+                        } else {
+                            Log.d("status", "Запускаем поиск по кнопке");
+                            requestType = true;
+                            callTaxiButton.setText("Отменить поиск такси");
+                            if (lastLocation != null) {
+                                mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(lastLocation.getLatitude(), lastLocation.getLongitude()), 18.0f));
+                            }
+                            displayLocation();
+                            //getNearbyDrivers(); //Начинаем поиск водителей
                         }
-                        displayLocation();
-                        //getNearbyDrivers(); //Начинаем поиск водителей
-                    }
-                } else Toast.makeText(CustomersMapActivity.this,"Необходимо заполнить данные о себе в настройках",Toast.LENGTH_SHORT).show();
+                    } else
+                        Toast.makeText(CustomersMapActivity.this, "Заполните информацию о себе", Toast.LENGTH_SHORT).show();
+                } else Toast.makeText(CustomersMapActivity.this, "Введите адрес", Toast.LENGTH_SHORT).show();
             }
         });
 
-        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
+        mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
 
@@ -384,6 +455,8 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
         mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(55.755,37.61), 12.0f));
 
     }
+
+
 
     private void buildGoogleApiClient() {
         googleApiClient = new GoogleApiClient.Builder(this)
@@ -648,33 +721,9 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
                 });
     }
 
-    /*private void checkBottomSheet(){
-        if(close){
-            close = false;
-            infoButton.setVisibility(View.INVISIBLE);
-            infoButton.setEnabled(false);
-            bottomSheetOpen();
-        } else {
-            bottomSheetClose();
-            close = true;
-            infoButton.setVisibility(View.VISIBLE);
-            infoButton.setEnabled(true);
-        }
-    }
+    private void setBottomSheetBehaviorExpanded(){
 
-    private void bottomSheetClose() {
-        if(bottomSheetBehavior.getState() == BottomSheetBehavior.STATE_EXPANDED | bottomSheetBehavior.getState() == BottomSheetBehavior.STATE_COLLAPSED){
-            bottomSheetBehavior.setHideable(true);
-            bottomSheetBehavior.setState(BottomSheetBehavior.STATE_HIDDEN);
-        }
     }
-
-    private void bottomSheetOpen(){
-        if(bottomSheetBehavior.getState() == BottomSheetBehavior.STATE_HIDDEN){
-            bottomSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
-            bottomSheetBehavior.setHideable(false);
-        }
-    }*/
 
     private void showLinearInfo(){
         DatabaseReference reference = FirebaseDatabase.getInstance().getReference()
