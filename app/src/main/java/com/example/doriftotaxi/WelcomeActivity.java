@@ -42,6 +42,7 @@ public class WelcomeActivity extends AppCompatActivity {
 
     private FirebaseAuth mAuth;
     private FirebaseUser CurrentUser;
+    ProgressDialog progressDialog;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -52,9 +53,15 @@ public class WelcomeActivity extends AppCompatActivity {
         driverBtn = (Button) findViewById(R.id.driverBtn);
         customerBtn = (Button) findViewById(R.id.customerBtn);
 
+        progressDialog = new ProgressDialog(WelcomeActivity.this);
+        progressDialog.show();
+        progressDialog.setContentView(R.layout.progress_dialog);
+        progressDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        progressDialog.setCancelable(false);
         if(CurrentUser != null){
             openMap();
-        }
+        } else progressDialog.dismiss();
+
 
         driverBtn.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -71,8 +78,6 @@ public class WelcomeActivity extends AppCompatActivity {
                 startActivity(customerIntent);
             }
         });
-
-        checkPermissions();
     }
 
     @Override
@@ -104,6 +109,7 @@ public class WelcomeActivity extends AppCompatActivity {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 if(snapshot.child("Users").child("Drivers").child(CurrentUser.getUid()).exists()){
+                    progressDialog.dismiss();
                     if(snapshot.child("Users").child("Drivers").child(CurrentUser.getUid()).getChildrenCount() == 0){
                         Intent driverIntent = new Intent(WelcomeActivity.this, DriverSettingsActivity.class);
                         driverIntent.putExtra("type", "Drivers");
@@ -112,6 +118,7 @@ public class WelcomeActivity extends AppCompatActivity {
                         startActivity(new Intent(WelcomeActivity.this, DriversMapActivity.class));
                     }
                 }else if(snapshot.child("Users").child("Customers").child(CurrentUser.getUid()).exists()){
+                    progressDialog.dismiss();
                     startActivity(new Intent(WelcomeActivity.this, CustomersMapActivity.class));
                 }
             }
@@ -129,28 +136,9 @@ public class WelcomeActivity extends AppCompatActivity {
     }
 
     @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+    public void onBackPressed() {
+        super.onBackPressed();
 
-        if(grantResults[0] == RESULT_CANCELED && requestCode == 100){
-            Toast.makeText(this, "Выданы пермишены, не забудьте включить GPS!", Toast.LENGTH_SHORT).show();
-        } else {
-            checkPermissions();
-        }
-    }
-
-    private void checkPermissions() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED
-                && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION}, 100);
-        }
-
-        /*AccessibilityService mContext = null;
-        LocationManager mLocationManager = (LocationManager) mContext.getSystemService(Context.LOCATION_SERVICE);
-        boolean mIsGPSEnabled = mLocationManager.isProviderEnabled(LocationManager.GPS_PROVIDER);
-        boolean mIsNetworkEnabled = mLocationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
-        boolean mIsGeoDisabled = !mIsGPSEnabled && !mIsNetworkEnabled;
-
-        if(mIsGeoDisabled) startActivity(new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS));*/
+        //progressDialog.dismiss();
     }
 }

@@ -34,7 +34,7 @@
         android:hint="Введите ваш Адрес"
         android:layout_margin="10dp"
         android:padding="15dp"
-        android:singleLine="true"
+        android:singleLine="false"
         android:inputType="text"
         />
 
@@ -46,7 +46,7 @@
         android:hint="Введите адрес назначения"
         android:layout_margin="10dp"
         android:padding="15dp"
-        android:singleLine="true"
+        android:singleLine="false"
         android:inputType="text"
         />
 
