@@ -43,6 +43,7 @@ public class WelcomeActivity extends AppCompatActivity {
     private FirebaseAuth mAuth;
     private FirebaseUser CurrentUser;
     ProgressDialog progressDialog;
+    private DatabaseReference databaseReference;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -103,8 +104,7 @@ public class WelcomeActivity extends AppCompatActivity {
         progressDialog.show();*/
         //progressDialog.dismiss();
 
-        DatabaseReference databaseReference1 = FirebaseDatabase.getInstance().getReference();
-
+        /*DatabaseReference databaseReference1 = FirebaseDatabase.getInstance().getReference();
         databaseReference1.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
@@ -127,12 +127,34 @@ public class WelcomeActivity extends AppCompatActivity {
             public void onCancelled(@NonNull DatabaseError error) {
 
             }
+        });*/
+
+        databaseReference.child("Customers").addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                if(dataSnapshot.child(mAuth.getCurrentUser().getUid()).exists())
+                {
+                    progressDialog.dismiss();
+                    startActivity(new Intent(WelcomeActivity.this, CustomersMapActivity.class));
+                }
+                else
+                {
+                    progressDialog.dismiss();
+                    startActivity(new Intent(WelcomeActivity.this, DriversMapActivity.class));
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) {
+
+            }
         });
     }
 
     private void initialize() {
         mAuth = FirebaseAuth.getInstance();
         CurrentUser = mAuth.getCurrentUser();
+        databaseReference = FirebaseDatabase.getInstance().getReference().child("Users");
     }
 
     @Override

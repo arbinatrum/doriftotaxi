@@ -8,6 +8,7 @@ import androidx.core.content.ContextCompat;
 import androidx.fragment.app.FragmentActivity;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.content.IntentSender;
 import android.content.pm.PackageManager;
@@ -293,54 +294,53 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
         callTaxiButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (searchBarA.length() > 0 && searchBarB.length() > 0) { //Проверяем заполненные поля
-                    if (StateCustomer) { //Проверяем есть ли информации о заказчике в БД
-                        if (requestType) { //Проверяем есть ли запрос на поездку
-                            Log.d("status", "Запускаем отмену по кнопке");
+                if (searchBarA.length() > 0 && searchBarB.length() > 0) { //Если поля заполнены, то начинаем поиск
+                    if (StateCustomer) { //Если есть информация о заказчике, то позволяем ему оформить заказ
+                        if (requestType) { //Если еще раз нажали на эту кнопку, то отменяем поиск заказа
+                            Log.d("status", "Start cancel search");
                             requestType = false;
-                            if (geoQuery != null) { //Обнуляем позицию водителя
+                            if (geoQuery != null) {
                                 geoQuery.removeAllListeners();
-                                DriversLocationRef.removeEventListener(DriverLocationRefListener); //Отменяем обновление данных о геолокации водителя
-                                Log.d("status", "очищаем geoQuery");
+                                DriversLocationRef.removeEventListener(DriverLocationRefListener);
+                                Log.d("status", "clear geoQuery");
                             }
                             if (driverFound) {
                                 DriversRef = FirebaseDatabase.getInstance().getReference()
                                         .child("Users").child("Drivers").child(driverFoundID).child("CustomerRideID");
                                 DriversRef.removeValue();
                                 driverFoundID = null;
-                                Log.d("status", "очищаем driverFound");
+                                Log.d("status", "clear driverFound");
                             }
                             driverFound = false;
                             radius = 1;
 
                             if (PickUpMarker != null) {
                                 PickUpMarker.remove();
-                                Log.d("status", "очищаем PickUpMarker в callTaxi");
+                                Log.d("status", "clear PickUpMarker in callTaxi");
                             }
 
                             if (driverMarker != null) {
                                 driverMarker.remove();
-                                Log.d("status", "очищаем driverMarker");
+                                Log.d("status", "clear driverMarker");
                             }
 
                             geoFire1 = new GeoFire(CustomerDatabaseReference);
-                            geoFire1.removeLocation(customerID); //Удаляем из БД запрос
+                            geoFire1.removeLocation(customerID);
 
                             callTaxiButton.setText("Начать поиск");
-                            Log.d("status", "меняем название кнопки на Начать поиск");
-
+                            Log.d("status", "change name Button -> Search");
+                            zoomToUserLocation();
                         } else {
-                            Log.d("status", "Запускаем поиск по кнопке");
+                            Log.d("status", "Start Search");
+                            callTaxiButton.setText("Отменить поиск");
                             requestType = true;
-                            callTaxiButton.setText("Отменить поиск такси");
-                            mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(lastLocation.getLatitude(), lastLocation.getLongitude()), 20.0f));
-                            if (PickUpMarker != null) PickUpMarker.remove(); //Удаляем старый маркер
-                            CustomerPosition = new LatLng(lastLocation.getLatitude(), lastLocation.getLongitude());
-                            PickUpMarker = mMap.addMarker(new MarkerOptions()
-                                    .position(CustomerPosition)
-                                    .title("Я нахожусь здесь"));
                             new setLocationTask().execute(lastLocation);
-                            //getNearbyDrivers(); //Начинаем поиск водителей
+                            if (PickUpMarker != null) PickUpMarker.remove();
+                            CustomerPosition = new LatLng(lastLocation.getLatitude(), lastLocation.getLongitude());
+                            PickUpMarker = mMap.addMarker(new MarkerOptions().position(CustomerPosition).title("Пункт подачи"));
+                            mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(CustomerPosition, 20.0f));
+                            bottomSheetBehavior.setState(BottomSheetBehavior.STATE_COLLAPSED);
+                            //getNearbyDrivers();
                         }
                     } else
                         Toast.makeText(CustomersMapActivity.this, "Заполните информацию о себе", Toast.LENGTH_SHORT).show();
@@ -360,14 +360,18 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
 
     public class setLocationTask extends AsyncTask<Location, Void, GeoFire> {
         Location location;
+
         @Override
         protected GeoFire doInBackground(Location... locations) {
+            mAuth = FirebaseAuth.getInstance();
+            currentUser = mAuth.getCurrentUser();
+            customerID = Objects.requireNonNull(FirebaseAuth.getInstance().getCurrentUser()).getUid();
 
-            if(locations.length > 0) {
+            if (locations.length > 0) {
                 location = locations[0];
             }
-
             try {
+
                 CustomerDatabaseReference = FirebaseDatabase.getInstance().getReference().child("Customers Requests"); //Обращаемся к запросам на заказ
                 geoFire1 = new GeoFire(CustomerDatabaseReference);
                 geoFire1.setLocation(customerID, new GeoLocation(location.getLatitude(), location.getLongitude()), new GeoFire.CompletionListener() {
@@ -380,15 +384,24 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
                         }
                     }
                 });
-            }
-            catch (DatabaseException databaseException)
-            {
+
+                HashMap<String, Object> userMap = new HashMap<>();
+                userMap.put("adressA", searchBarA.getText().toString());
+                userMap.put("adressB", searchBarB.getText().toString());
+
+                CustomerDatabaseReference.child(mAuth.getCurrentUser().getUid()).updateChildren(userMap);
+
+            } catch (DatabaseException databaseException) {
                 databaseException.printStackTrace();
             }
             return null;
         }
-    }
 
+        @Override
+        protected void onPostExecute(GeoFire geoFire) {
+            super.onPostExecute(geoFire);
+        }
+    }
 
 
     private void askLocationPermission() {
@@ -415,60 +428,12 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
         }
     }
 
-    private void setUpLocation() {
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
-                ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, new String[]{
-                    Manifest.permission.ACCESS_COARSE_LOCATION,
-                    Manifest.permission.ACCESS_FINE_LOCATION
-            }, MY_PERMISSION_REQUEST_CODE);
-        } else {
-            buildGoogleApiClient();
-        }
-    }
-
-    private void displayLocation() {
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
-                ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            return;
-        }
-        if (CustomerLocationRefListener != null) {
-            CustomerDatabaseReference.removeEventListener(CustomerLocationRefListener);
-        }
-        Task<Location> locationTask = fusedLocationProviderClient.getLastLocation();
-
-        locationTask.addOnSuccessListener(new OnSuccessListener<Location>() {
-            @Override
-            public void onSuccess(Location location) {
-                if (location != null) {
-                    //We have a location
-                    Log.d("TAG", "onSuccess: " + location.toString());
-                    Log.d("TAG", "onSuccess: " + location.getLatitude());
-                    Log.d("TAG", "onSuccess: " + location.getLongitude());
-                } else {
-                    Log.d("TAG", "onSuccess: Location was null...");
-                }
-            }
-        });
-
-        locationTask.addOnFailureListener(new OnFailureListener() {
-            @Override
-            public void onFailure(@NonNull Exception e) {
-                Log.d("TAG", "onFailure: " + e.getLocalizedMessage());
-            }
-        });
-
-        //lastLocation = LocationServices.FusedLocationApi.getLastLocation(googleApiClient);
-
-    }
-
-
     //Отрисовка карты
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
         Log.d("status", "Запустился onMapReady()");
-        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(56.129057, 40.406635), 12.0f));
+        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(56.129057, 40.406635), 12.0f));
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
             enableUserLocation();
             zoomToUserLocation();
@@ -479,7 +444,6 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
                 ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, ACCES_LOCATION_REQUEST_CODE);
             }
         }
-        //setUpLocation();
     }
 
     private void enableUserLocation() {
@@ -512,7 +476,7 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
             @Override
             public void onSuccess(Location location) {
                 LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
-                mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 18));
+                mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 18));
             }
         });
     }
@@ -529,10 +493,13 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
 
     @Override
     public void onConnected(@Nullable Bundle bundle) {
-
+        if(status && lastLocation!= null){
+            zoomToUserLocation();
+            status = false;
+        }
     }
 
-    private void checkSettingsAndStartLocationUpdated(){
+    private void checkSettingsAndStartLocationUpdated() {
         LocationSettingsRequest request = new LocationSettingsRequest.Builder()
                 .addLocationRequest(locationRequest).build();
         SettingsClient client = LocationServices.getSettingsClient(this);
@@ -548,11 +515,11 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
         locationSettingsResponseTask.addOnFailureListener(new OnFailureListener() {
             @Override
             public void onFailure(@NonNull Exception e) {
-                Log.d("TAG","Не удается начать обновление локации");
-                if(e instanceof ResolvableApiException){
+                Log.d("TAG", "Не удается начать обновление локации");
+                if (e instanceof ResolvableApiException) {
                     ResolvableApiException apiException = (ResolvableApiException) e;
                     try {
-                        apiException.startResolutionForResult(CustomersMapActivity.this,1001);
+                        apiException.startResolutionForResult(CustomersMapActivity.this, 1001);
                     } catch (IntentSender.SendIntentException sendIntentException) {
                         sendIntentException.printStackTrace();
                     }
@@ -563,7 +530,7 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
     }
 
     private void startLocationUpdates() {
-        if(ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
                 ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             return;
         }
@@ -571,7 +538,7 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
         fusedLocationProviderClient.requestLocationUpdates(locationRequest, locationCallback, Looper.getMainLooper());
     }
 
-    private void stopLocationUpdate(){
+    private void stopLocationUpdate() {
         fusedLocationProviderClient.removeLocationUpdates(locationCallback);
     }
 
@@ -582,7 +549,7 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
 
     @Override
     public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
-        Log.d("status","Запустился onConnectionFailed()");
+        Log.d("status", "Запустился onConnectionFailed()");
     }
 
     @Override
@@ -595,16 +562,17 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
     @Override
     protected void onStart() {
         super.onStart();
-        Log.d("TAG","Запустился onStart()");
+        Log.d("TAG", "Запустился onStart()");
         checkStatus();
-        if(ContextCompat.checkSelfPermission(this,Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) checkSettingsAndStartLocationUpdated();
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED)
+            checkSettingsAndStartLocationUpdated();
         else askLocationPermission();
     }
 
     @Override
     protected void onStop() {
         super.onStop();
-        Log.d("status","Запустился onStop()");
+        Log.d("status", "Запустился onStop()");
         //checkStatus();
         stopLocationUpdate();
     }
@@ -613,9 +581,9 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
     protected void onDestroy() {
         super.onDestroy();
 
-        Log.d("status","Запустился onDestroy()");
+        Log.d("status", "Запустился onDestroy()");
 
-        if(requestType) {
+        if (requestType) {
             GeoFire geoFire = new GeoFire(CustomerDatabaseReference);
             geoFire.removeLocation(customerID);
             requestType = false;
@@ -626,64 +594,74 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
     @Override
     protected void onResume() {
         super.onResume();
-        Log.d("status","Запустился onResume()");
+        Log.d("status", "Запустился onResume()");
         checkStatus();
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED)
+            checkSettingsAndStartLocationUpdated();
+        else askLocationPermission();
     }
 
     private void checkStatus() {
-        CustomerLocationRefListener = CustomerDatabaseReference.child(customerID).child("l")
+        CustomerLocationRefListener = CustomerDatabaseReference.child(customerID)
                 .addValueEventListener(new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot snapshot) {
-                if(snapshot.exists()) {
-                    requestType = true;
-                    List<Object> customerLocationMap = (List<Object>) snapshot.getValue();
-                    double LocationLat = 0;
-                    double LocationLng = 0;
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        if (snapshot.exists()) {
+                            requestType = true;
+                            List<Object> customerLocationMap = (List<Object>) snapshot.child("l").getValue();
+                            double LocationLat = 0;
+                            double LocationLng = 0;
 
-                    if (customerLocationMap.get(0) != null){
-                        LocationLat = Double.parseDouble(customerLocationMap.get(0).toString());
-                        Log.d("status", String.format("LocationLat = %f", LocationLat));
+                            if (customerLocationMap.get(0) != null) {
+                                LocationLat = Double.parseDouble(customerLocationMap.get(0).toString());
+                                Log.d("status", String.format("LocationLat = %f", LocationLat));
+                            }
+                            if (customerLocationMap.get(1) != null) {
+                                LocationLng = Double.parseDouble(customerLocationMap.get(1).toString());
+                                Log.d("status", String.format("LocationLat = %f", LocationLng));
+                            }
+
+                            if (PickUpMarker != null) { //Удалим маркер если он есть
+                                PickUpMarker.remove();
+                            }
+                            Location lastLocation = new Location("");
+                            lastLocation.setLatitude(LocationLat);
+                            lastLocation.setLongitude(LocationLng);
+
+                            if (snapshot.getChildrenCount() > 2) {
+                                String searchA = snapshot.child("adressA").getValue().toString();
+                                String searchB = snapshot.child("adressB").getValue().toString();
+                                searchBarA.setText(searchA);
+                                searchBarB.setText(searchB);
+                            }
+
+                            CustomerPosition = new LatLng(lastLocation.getLatitude(), lastLocation.getLongitude());
+
+                            //Анимация Камеры
+                            PickUpMarker = mMap.addMarker(new MarkerOptions()
+                                    .position(CustomerPosition)
+                                    .title("Я нахожусь здесь"));
+
+                            mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(PickUpMarker.getPosition(), 18.0f));
+
+                            callTaxiButton.setText("Отменить поиск такси");
+
+                            //displayLocation();
+                        }
                     }
-                    if (customerLocationMap.get(1) != null){
-                        LocationLng = Double.parseDouble(customerLocationMap.get(1).toString());
-                        Log.d("status", String.format("LocationLat = %f", LocationLng));
+
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError error) {
+
                     }
-
-                    if(PickUpMarker != null) { //Удалим маркер если он есть
-                        PickUpMarker.remove();
-                    }
-                    Location lastLocation = new Location("");
-                    lastLocation.setLatitude(LocationLat);
-                    lastLocation.setLongitude(LocationLng);
-
-                    CustomerPosition = new LatLng(lastLocation.getLatitude(),lastLocation.getLongitude());
-
-                    //Анимация Камеры
-                    PickUpMarker = mMap.addMarker(new MarkerOptions()
-                            .position(CustomerPosition)
-                            .title("Я нахожусь здесь"));
-
-                    mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(lastLocation.getLatitude(),lastLocation.getLongitude()),18.0f));
-
-                    callTaxiButton.setText("Отменить поиск такси");
-
-                    //displayLocation();
-                }
-            }
-
-            @Override
-            public void onCancelled(@NonNull DatabaseError error) {
-
-            }
-        });
+                });
     }
 
     @Override
     protected void onRestart() {
         super.onRestart();
 
-        Log.d("status","Запустился onRestart()");
+        Log.d("status", "Запустился onRestart()");
         //displayLocation();
     }
 
@@ -709,7 +687,7 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
         geoQuery.addGeoQueryEventListener(new GeoQueryEventListener() {
             @Override
             public void onKeyEntered(String key, GeoLocation location) {
-                if(!driverFound && requestType){
+                if (!driverFound && requestType) {
                     driverFound = true;
                     driverFoundID = key;
 
@@ -737,7 +715,7 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
             @Override
             public void onGeoQueryReady() {
                 //Если водитель не найден, то увеличиваем радиус
-                if(!driverFound){
+                if (!driverFound) {
                     radius = radius + 1;
                     getNearbyDrivers();
                 }
@@ -758,7 +736,7 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
                 addValueEventListener(new ValueEventListener() {
                     @Override
                     public void onDataChange(@NonNull DataSnapshot snapshot) {
-                        if (snapshot.exists() && requestType){
+                        if (snapshot.exists() && requestType) {
                             List<Object> driverLocationMap = (List<Object>) snapshot.getValue();
                             double LocationLat = 0;
                             double LocationLng = 0;
@@ -771,17 +749,17 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
                             infoButton.setEnabled(true);
                             showLinearInfo();
 
-                            if (driverLocationMap.get(0) != null){
+                            if (driverLocationMap.get(0) != null) {
                                 LocationLat = Double.parseDouble(driverLocationMap.get(0).toString());
 
                             }
-                            if (driverLocationMap.get(1) != null){
+                            if (driverLocationMap.get(1) != null) {
                                 LocationLng = Double.parseDouble(driverLocationMap.get(1).toString());
                             }
 
                             LatLng DriverLatLng = new LatLng(LocationLat, LocationLng);
 
-                            if(driverMarker != null) { //Удалим лишних водителей
+                            if (driverMarker != null) { //Удалим лишних водителей
                                 driverMarker.remove();
                             }
 
@@ -796,16 +774,15 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
 
                             float Distance = location1.distanceTo(location2); //Определение расстояния по гугл локации
 
-                            if (Distance < 50){
+                            if (Distance < 50) {
                                 infoButton.setText("Ваше такси подъезжает");
-                            }
-                            else {
+                            } else {
                                 infoButton.setText("Такси в пути");
                             }
 
                             driverMarker = mMap.addMarker(new MarkerOptions().position(DriverLatLng)
                                     .title("Ваше такси тут").icon(BitmapDescriptorFactory.fromResource(R.drawable.car)));
-                         }
+                        }
                     }
 
                     @Override
@@ -815,7 +792,7 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
                 });
     }
 
-    private void showLinearInfo(){
+    private void showLinearInfo() {
         DatabaseReference reference = FirebaseDatabase.getInstance().getReference()
                 .child("Users")
                 .child("Drivers")
@@ -823,7 +800,7 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
         reference.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
-                if(snapshot.exists() && snapshot.getChildrenCount() > 1){
+                if (snapshot.exists() && snapshot.getChildrenCount() > 1) {
                     String name = snapshot.child("name").getValue().toString();
                     String phone = snapshot.child("phone").getValue().toString();
                     String carmodel = snapshot.child("carmodel").getValue().toString();
@@ -832,7 +809,7 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
                     txtPhone.setText(phone);
                     txtCar.setText(carmodel + "," + carnumber);
 
-                    if(snapshot.hasChild("image")) {
+                    if (snapshot.hasChild("image")) {
                         String image = snapshot.child("image").getValue().toString();
                         Picasso.get().load(image).into(DriverImageView);
                     }
@@ -847,12 +824,12 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
 
     }
 
-    private void getStateCustomer(){
+    private void getStateCustomer() {
         DatabaseReference CustomerDatabaseRef = FirebaseDatabase.getInstance().getReference().child("Users").child("Customers").child(customerID);
         CustomerDatabaseRef.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
-                if(snapshot.exists() && snapshot.getChildrenCount() > 1){
+                if (snapshot.exists() && snapshot.getChildrenCount() > 1) {
                     StateCustomer = true;
                 } else StateCustomer = false;
             }
@@ -863,44 +840,4 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
             }
         });
     }
-
-    /*private void updateTask(final Location location, final GeoFire geoFire){
-        new Thread(){
-            @Override
-            public void run() {
-                geoFire.setLocation(customerID, new GeoLocation(location.getLatitude(), location.getLongitude()), new GeoFire.CompletionListener() {
-                    @Override
-                    public void onComplete(String key, DatabaseError error) {
-                        if(error != null) {
-                            Log.d("TAG","There was an error saving the location to GeoFire: " + error);
-                        } else {
-                            Log.d("TAG","Location saved on server successfully!");
-                            //Установка геопозиции заказчика на карте
-                        }
-                    }
-                });
-            }
-        }.start();
-    }*/
 }
-
-/*geoFire.setLocation(customerID, new GeoLocation(location.getLatitude(), location.getLongitude()), new GeoFire.CompletionListener() {
-                    @Override
-                    public void onComplete(String key, DatabaseError error) {
-                        if(error != null) {
-                            Log.d("TAG","There was an error saving the location to GeoFire: " + error);
-                        } else {
-                            Log.d("TAG","Location saved on server successfully!");
-                            //Установка геопозиции заказчика на карте
-                            if (PickUpMarker != null) PickUpMarker.remove();
-                            Log.d("status", "Отдаем локацию в firebase, setLocation");
-
-                            //Анимация Камеры
-                            PickUpMarker = mMap.addMarker(new MarkerOptions()
-                                    .position(CustomerPosition)
-                                    .title("Я нахожусь здесь"));
-                            //showLocation(lastLocation, 10); //Зум камеры при поиске
-                            Log.d("status", "Поставили маркер PickUpMarker в displayLocation");
-                        }
-                    }
-                });*/
