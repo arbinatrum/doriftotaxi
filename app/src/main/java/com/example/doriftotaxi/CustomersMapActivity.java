@@ -9,6 +9,7 @@ import androidx.fragment.app.FragmentActivity;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
+import android.app.Dialog;
 import android.content.Intent;
 import android.content.IntentSender;
 import android.content.pm.PackageManager;
@@ -18,6 +19,7 @@ import android.os.Bundle;
 import android.os.Looper;
 import android.util.Log;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.RelativeLayout;
@@ -80,6 +82,8 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
     private static final int MY_PERMISSION_REQUEST_CODE = 7192;
     private static final int PLAY_SERVICES_RESOLUTION_REQUEST = 300193;
 
+    Dialog dialog;
+
     private SupportMapFragment mapFragment;
     private GoogleMap mMap;
     GoogleApiClient googleApiClient;
@@ -114,6 +118,8 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
     private Button callTaxiButton;
     private EditText searchBarA, searchBarB;
     private int beforeBottomSheetState;
+    String searchA;
+    String searchB;
 
     //Токены и буллеаны
     String customerID;
@@ -152,6 +158,29 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
                 .findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
 
+        dialog = new Dialog(CustomersMapActivity.this);
+        dialog.setContentView(R.layout.dialog_fragment);
+        dialog.getWindow().setBackgroundDrawable(getDrawable(R.drawable.background));
+        dialog.getWindow().setLayout(ViewGroup.LayoutParams.WRAP_CONTENT,ViewGroup.LayoutParams.WRAP_CONTENT);
+        dialog.setCancelable(false);
+        dialog.getWindow().getAttributes().windowAnimations = R.style.animation;
+
+        Button okay = dialog.findViewById(R.id.customer_approve_button);
+
+        okay.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Toast.makeText(CustomersMapActivity.this, "Okay", Toast.LENGTH_SHORT).show();
+                dialog.dismiss();
+                bottomSheetBehavior.setDraggable(true);
+                bottomSheetBehavior.setHideable(true);
+                bottomSheetBehavior.setState(BottomSheetBehavior.STATE_HIDDEN);
+                RelInfo.setVisibility(View.VISIBLE);
+                RelInfo.setEnabled(true);
+                infoButton.setVisibility(View.VISIBLE);
+                infoButton.setEnabled(true);
+            }
+        });
         //Элементы нижнего листа
         callTaxiButton = findViewById(R.id.customer_order_button);
         searchBarA = findViewById(R.id.search_bar_A);
@@ -164,13 +193,14 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
         bottomSheetBehavior.addBottomSheetCallback(new BottomSheetBehavior.BottomSheetCallback() {
             @Override
             public void onStateChanged(@NonNull View bottomSheet, int newState) {
-                //Log.d("status Behavior",String.format("state is %d",bottomSheetBehavior.getState()));
+                Log.d("status Behavior",String.format("state is %d",bottomSheetBehavior.getState()));
                 beforeBottomSheetState = bottomSheetBehavior.getState();
+                if(bottomSheetBehavior.getState() == BottomSheetBehavior.STATE_HALF_EXPANDED) dialog.show();
             }
 
             @Override
             public void onSlide(@NonNull View bottomSheet, float slideOffset) {
-                //Log.d("Status",String.format("Положения - %f",slideOffset));
+                Log.d("Status",String.format("Положения - %f",slideOffset));
                 if (slideOffset > 0.251 && !searchBarA.hasFocus() && !searchBarB.hasFocus()) {
                     bottomSheetBehavior.setState(BottomSheetBehavior.STATE_HALF_EXPANDED);
                 }
@@ -294,45 +324,39 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
         callTaxiButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (searchBarA.length() > 0 && searchBarB.length() > 0) { //Если поля заполнены, то начинаем поиск
-                    if (StateCustomer) { //Если есть информация о заказчике, то позволяем ему оформить заказ
+                if (StateCustomer) { //Если есть информация о заказчике, то позволяем ему оформить заказ
+                    if (searchBarA.length() > 0 && searchBarB.length() > 0 ) { //Если поля заполнены, то начинаем поиск
+                        searchA = searchBarA.getText().toString();
+                        searchB = searchBarB.getText().toString();
                         if (requestType) { //Если еще раз нажали на эту кнопку, то отменяем поиск заказа
-                            Log.d("status", "Start cancel search");
                             requestType = false;
                             if (geoQuery != null) {
                                 geoQuery.removeAllListeners();
                                 DriversLocationRef.removeEventListener(DriverLocationRefListener);
-                                Log.d("status", "clear geoQuery");
                             }
                             if (driverFound) {
                                 DriversRef = FirebaseDatabase.getInstance().getReference()
                                         .child("Users").child("Drivers").child(driverFoundID).child("CustomerRideID");
                                 DriversRef.removeValue();
                                 driverFoundID = null;
-                                Log.d("status", "clear driverFound");
                             }
                             driverFound = false;
                             radius = 1;
 
                             if (PickUpMarker != null) {
                                 PickUpMarker.remove();
-                                Log.d("status", "clear PickUpMarker in callTaxi");
                             }
 
                             if (driverMarker != null) {
                                 driverMarker.remove();
-                                Log.d("status", "clear driverMarker");
                             }
 
                             geoFire1 = new GeoFire(CustomerDatabaseReference);
                             geoFire1.removeLocation(customerID);
 
-                            callTaxiButton.setText("Начать поиск");
-                            Log.d("status", "change name Button -> Search");
+                            cancelSearchStart();
                             zoomToUserLocation();
                         } else {
-                            Log.d("status", "Start Search");
-                            callTaxiButton.setText("Отменить поиск");
                             requestType = true;
                             new setLocationTask().execute(lastLocation);
                             if (PickUpMarker != null) PickUpMarker.remove();
@@ -342,10 +366,38 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
                             bottomSheetBehavior.setState(BottomSheetBehavior.STATE_COLLAPSED);
                             //getNearbyDrivers();
                         }
-                    } else
-                        Toast.makeText(CustomersMapActivity.this, "Заполните информацию о себе", Toast.LENGTH_SHORT).show();
+                    } else if(requestType){
+                        requestType = false;
+                        if (geoQuery != null) {
+                            geoQuery.removeAllListeners();
+                            DriversLocationRef.removeEventListener(DriverLocationRefListener);
+                        }
+                        if (driverFound) {
+                            DriversRef = FirebaseDatabase.getInstance().getReference()
+                                    .child("Users").child("Drivers").child(driverFoundID).child("CustomerRideID");
+                            DriversRef.removeValue();
+                            driverFoundID = null;
+                        }
+                        driverFound = false;
+                        radius = 1;
+
+                        if (PickUpMarker != null) {
+                            PickUpMarker.remove();
+                        }
+
+                        if (driverMarker != null) {
+                            driverMarker.remove();
+                        }
+
+                        geoFire1 = new GeoFire(CustomerDatabaseReference);
+                        geoFire1.removeLocation(customerID);
+
+                        cancelSearchStart();
+                        zoomToUserLocation();
+                    } else Toast.makeText(CustomersMapActivity.this, "Введите адрес", Toast.LENGTH_SHORT).show();
+
                 } else
-                    Toast.makeText(CustomersMapActivity.this, "Введите адрес", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(CustomersMapActivity.this, "Заполните информацию о себе", Toast.LENGTH_SHORT).show();
             }
         });
 
@@ -400,6 +452,8 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
         @Override
         protected void onPostExecute(GeoFire geoFire) {
             super.onPostExecute(geoFire);
+
+            searchStart();
         }
     }
 
@@ -629,10 +683,10 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
                             lastLocation.setLongitude(LocationLng);
 
                             if (snapshot.getChildrenCount() > 2) {
-                                String searchA = snapshot.child("adressA").getValue().toString();
-                                String searchB = snapshot.child("adressB").getValue().toString();
-                                searchBarA.setText(searchA);
-                                searchBarB.setText(searchB);
+                                String searchPointA = snapshot.child("adressA").getValue().toString();
+                                String searchPointB = snapshot.child("adressB").getValue().toString();
+                                searchA = searchPointA;
+                                searchB = searchPointA;
                             }
 
                             CustomerPosition = new LatLng(lastLocation.getLatitude(), lastLocation.getLongitude());
@@ -644,7 +698,7 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
 
                             mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(PickUpMarker.getPosition(), 18.0f));
 
-                            callTaxiButton.setText("Отменить поиск такси");
+                            searchStart();
 
                             //displayLocation();
                         }
@@ -661,8 +715,6 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
     protected void onRestart() {
         super.onRestart();
 
-        Log.d("status", "Запустился onRestart()");
-        //displayLocation();
     }
 
     //Выходим на начальный экран и выполняем логаут для Заказчика
@@ -697,7 +749,8 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
                     DriversRef.updateChildren(driverMap);
                     //Привязка водителя к заказчику после нахождения
 
-                    GetDriverLocation();
+
+                    //GetDriverLocation();
                     //showLocation(driverMarker, 15); //Показываем заказчику расположение водителя
                 }
             }
@@ -840,4 +893,29 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
             }
         });
     }
+
+    private void searchStart(){
+        searchBarA.setText("Поиск водителя...");
+        searchBarB.setText("");
+        searchBarA.setEnabled(false);
+        searchBarB.setEnabled(false);
+        searchBarB.setVisibility(View.INVISIBLE);
+        callTaxiButton.setText("Отменить поиск");
+        
+    }
+
+    private void cancelSearchStart(){
+        searchBarA.setText("");
+        searchBarA.setEnabled(true);
+        searchBarB.setEnabled(true);
+        searchBarB.setVisibility(View.VISIBLE);
+        searchBarA.setText(searchA);
+        searchBarB.setText(searchB);
+        callTaxiButton.setText("Начать поиск");
+    }
+
+    private void driverFound(){
+
+    }
+
 }

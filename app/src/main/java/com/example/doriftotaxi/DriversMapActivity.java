@@ -1,31 +1,38 @@
 package com.example.doriftotaxi;
 
+import android.Manifest;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentSender;
+import android.content.pm.PackageManager;
+import android.location.Location;
+import android.location.LocationManager;
+import android.os.Bundle;
+import android.os.Looper;
+import android.util.Log;
+import android.view.View;
+import android.widget.Button;
+import android.widget.Toast;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.FragmentActivity;
 
-import android.Manifest;
-import android.content.Context;
-import android.content.Intent;
-import android.content.pm.PackageManager;
-import android.location.Location;
-import android.location.LocationManager;
-import android.os.Build;
-import android.os.Bundle;
-import android.provider.Settings;
-import android.view.TouchDelegate;
-import android.view.View;
-import android.widget.Button;
-import android.widget.Toast;
-
 import com.firebase.geofire.GeoFire;
 import com.firebase.geofire.GeoLocation;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.common.api.ResolvableApiException;
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.location.LocationSettingsRequest;
+import com.google.android.gms.location.LocationSettingsResponse;
+import com.google.android.gms.location.SettingsClient;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
@@ -33,6 +40,9 @@ import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
@@ -41,22 +51,41 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
-
-import static java.lang.Thread.sleep;
 
 public class DriversMapActivity extends FragmentActivity implements OnMapReadyCallback,
         GoogleApiClient.ConnectionCallbacks,
         GoogleApiClient.OnConnectionFailedListener,
         com.google.android.gms.location.LocationListener {
 
+    private static final int ACCES_LOCATION_REQUEST_CODE = 10001;
+    private static final int MY_PERMISSION_REQUEST_CODE = 7192;
+
+    FusedLocationProviderClient fusedLocationProviderClient;
+    LocationRequest locationRequest;
+    LocationCallback locationCallback = new LocationCallback() {
+        @Override
+        public void onLocationResult(LocationResult locationResult) {
+            if (locationResult == null) {
+                Log.d("TAG", "onLocationResult равен нулю ");
+                return;
+            }
+            for (Location location : locationResult.getLocations()) {
+                //displayLocation();
+                Log.d("TAG", "onLocationResult: " + location.toString());
+                lastLocation = location;
+                if(lastLocation != null && requestType == true && customerID == ""){
+                    GeoFire geoFire = new GeoFire(DriverDatabaseRef);
+                    geoFire.setLocation(driverID, new GeoLocation(lastLocation.getLatitude(), lastLocation.getLongitude()));
+                }
+            }
+        }
+    };
+
     private GoogleMap mMap;
     GoogleApiClient googleApiClient;
     Location lastLocation, FirstLocation;
-    LocationRequest locationRequest;
     LocationManager locationManager;
     Marker PickUpMarker;
 
@@ -72,6 +101,7 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
     private DatabaseReference assignedCustomerRef, AssignedCustomerPosition;
 
     private ValueEventListener AssignedCustomerPositionListener;
+    private ValueEventListener DriverLocationRefListener;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -113,14 +143,16 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
             @Override
             public void onClick(View v) {
                 if(requestType && customerID == "") {
-                    showLocation(lastLocation, 18);
                     DisconnectDriver();
                     requestType = false;
                     DriverApprovedButton.setText("Начать поиск заказов");
+                    zoomToUserLocation();
                 } else if(customerID == "" && !requestType){
-                    showLocation(lastLocation, 10); //Переводим камеру на таксиста
+                    zoomToUserLocation(); //Переводим камеру на таксиста
                     requestType = true;
-                    DriverApprovedButton.setText("Прекратить поиск заказов");
+                    DriverApprovedButton.setText("Отменить поиск заказов");
+                    GeoFire geoFire = new GeoFire(DriverDatabaseRef);
+                    geoFire.setLocation(driverID, new GeoLocation(lastLocation.getLatitude(), lastLocation.getLongitude()));
                     getAssignedCustomerRequest();
                 }
             }
@@ -131,7 +163,6 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
             public void onClick(View v) {
                 if(!requestType) {
                     currentLogoutDriverStatus = true;
-                    DisconnectDriver();
                     mAuth.signOut();//Выход из аутентификации
                     LogoutDriver();//Переход обратно на экран выбора пользователя
                 }else {
@@ -139,31 +170,144 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
                 }
             }
         });
+
+        fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
+
+        locationRequest = LocationRequest.create();
+        locationRequest.setInterval(4000); //Интервал обновления геолокации
+        locationRequest.setFastestInterval(2000);
+        locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+        locationRequest.setSmallestDisplacement(10);
     }
 
+    private void askLocationPermission() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.ACCESS_FINE_LOCATION)) {
+                Log.d("TAG", "askLocationPermission: you should show an alert dialog...");
+                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, MY_PERMISSION_REQUEST_CODE);
+            } else {
+                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, MY_PERMISSION_REQUEST_CODE);
+            }
+        }
+    }
 
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        switch (requestCode) {
+            case MY_PERMISSION_REQUEST_CODE:
+                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    enableUserLocation();
+                    checkSettingsAndStartLocationUpdated();
+                    buildGoogleApiClient();
+                }
+                break;
+        }
+    }
+
+    //Отрисовка карты
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
+        Log.d("status", "Запустился onMapReady()");
+        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(56.129057, 40.406635), 12.0f));
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            enableUserLocation();
+            zoomToUserLocation();
+        } else {
+            if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.ACCESS_FINE_LOCATION)) {
+                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, ACCES_LOCATION_REQUEST_CODE);
+            } else {
+                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, ACCES_LOCATION_REQUEST_CODE);
+            }
+        }
+    }
 
-        buildGoogleApiClient();
+    private void enableUserLocation() {
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            // TODO: Consider calling
+            //    ActivityCompat#requestPermissions
+            // here to request the missing permissions, and then overriding
+            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+            //                                          int[] grantResults)
+            // to handle the case where the user grants the permission. See the documentation
+            // for ActivityCompat#requestPermissions for more details.
             return;
         }
         mMap.setMyLocationEnabled(true);
     }
 
+    private void zoomToUserLocation() {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            // TODO: Consider calling
+            //    ActivityCompat#requestPermissions
+            // here to request the missing permissions, and then overriding
+            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+            //                                          int[] grantResults)
+            // to handle the case where the user grants the permission. See the documentation
+            // for ActivityCompat#requestPermissions for more details.
+            return;
+        }
+        Task<Location> locationTask = fusedLocationProviderClient.getLastLocation();
+        locationTask.addOnSuccessListener(new OnSuccessListener<Location>() {
+            @Override
+            public void onSuccess(Location location) {
+                LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
+                mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 18));
+            }
+        });
+    }
+
+
+
     @Override
     public void onConnected(@Nullable Bundle bundle) {
-        locationRequest = new LocationRequest();
-        locationRequest.setInterval(1000); //Интервал обновления геолокации, 1 секунда
-        locationRequest.setFastestInterval(1000);
-        locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+        if(status && lastLocation!= null){
+            zoomToUserLocation();
+            status = false;
+        }
+    }
 
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+    private void checkSettingsAndStartLocationUpdated() {
+        LocationSettingsRequest request = new LocationSettingsRequest.Builder()
+                .addLocationRequest(locationRequest).build();
+        SettingsClient client = LocationServices.getSettingsClient(this);
+
+        Task<LocationSettingsResponse> locationSettingsResponseTask = client.checkLocationSettings(request);
+        locationSettingsResponseTask.addOnSuccessListener(new OnSuccessListener<LocationSettingsResponse>() {
+            @Override
+            public void onSuccess(LocationSettingsResponse locationSettingsResponse) {
+                startLocationUpdates();
+            }
+        });
+
+        locationSettingsResponseTask.addOnFailureListener(new OnFailureListener() {
+            @Override
+            public void onFailure(@NonNull Exception e) {
+                Log.d("TAG", "Не удается начать обновление локации");
+                if (e instanceof ResolvableApiException) {
+                    ResolvableApiException apiException = (ResolvableApiException) e;
+                    try {
+                        apiException.startResolutionForResult(DriversMapActivity.this, 1001);
+                    } catch (IntentSender.SendIntentException sendIntentException) {
+                        sendIntentException.printStackTrace();
+                    }
+                }
+            }
+        });
+
+    }
+
+    private void startLocationUpdates() {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
+                ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             return;
-        } //Если выданы пермишны на геолокацию, то получаем данные о своем месторасположении
-        LocationServices.FusedLocationApi.requestLocationUpdates(googleApiClient, locationRequest, this);
+        }
+        //LocationServices.FusedLocationApi.requestLocationUpdates(googleApiClient, locationRequest, this);
+        fusedLocationProviderClient.requestLocationUpdates(locationRequest, locationCallback, Looper.getMainLooper());
+    }
+
+    private void stopLocationUpdate() {
+        fusedLocationProviderClient.removeLocationUpdates(locationCallback);
     }
 
     @Override
@@ -177,25 +321,9 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
 
     @Override
     public void onLocationChanged(final Location location) {
-        if (getApplicationContext() != null) {
-            lastLocation = location;
 
-            //Мое месторасположение
-            if(status) {
-                status = false;
-                showLocation(lastLocation, 18);
-            }
-            if (requestType) updateLocationUser();
-        }
     }
 
-    //Метод обновления камеры вынесен отдельно
-    private void showLocation(Location location, int zoomSide) {
-        LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
-
-        mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
-        mMap.animateCamera(CameraUpdateFactory.zoomTo(zoomSide));
-    }
 
     protected synchronized void buildGoogleApiClient(){
         googleApiClient = new GoogleApiClient.Builder(this)
@@ -214,18 +342,62 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
         if(!currentLogoutDriverStatus) {
             DisconnectDriver();
         }
+
+        Log.d("status", "Запустился onStop()");
+        //checkStatus(); //Тут надо будет дописать проверку активного заказа, чтобы при перезаходе он работал правильно
+        stopLocationUpdate();
+    }
+
+
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        Log.d("TAG", "Запустился onStart()");
+        //checkStatus(); //Тут надо будет дописать проверку активного заказа, чтобы при перезаходе он работал правильно
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED)
+            checkSettingsAndStartLocationUpdated();
+        else askLocationPermission();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        Log.d("status", "Запустился onDestroy()");
+
+        DisconnectDriver();
+        stopLocationUpdate();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        Log.d("status", "Запустился onResume()");
+        //checkStatus(); //Тут надо будет дописать проверку активного заказа, чтобы при перезаходе он работал правильно
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED)
+            checkSettingsAndStartLocationUpdated();
+        else askLocationPermission();
     }
 
     //Метод для удаления Driver Available.
     private void DisconnectDriver() {
+        if(customerID == "" && requestType) {
+            DriverApprovedButton.setText("Готов принимать заказы");
+            String userID = Objects.requireNonNull(FirebaseAuth.getInstance().getCurrentUser()).getUid();
+            DatabaseReference DriverAvailabilityRef = FirebaseDatabase.getInstance().getReference().child("Driver Available");
+
+            GeoFire geoFire = new GeoFire(DriverAvailabilityRef);
+            geoFire.removeLocation(userID);
+            requestType = false;
+        }
+    }
+
+    private void LogoutDriver() {
         String userID = Objects.requireNonNull(FirebaseAuth.getInstance().getCurrentUser()).getUid();
         DatabaseReference DriverAvailabilityRef = FirebaseDatabase.getInstance().getReference().child("Driver Available");
 
         GeoFire geoFire = new GeoFire(DriverAvailabilityRef);
         geoFire.removeLocation(userID);
-    }
-
-    private void LogoutDriver() {
         Intent welcomeIntent = new Intent(DriversMapActivity.this, WelcomeActivity.class);
         startActivity(welcomeIntent);
         finish();
@@ -255,7 +427,26 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
         }
     }
 
-    private void getAssignedCustomerRequest() {
+    private void getAssignedCustomerRequest(){
+        assignedCustomerRef = FirebaseDatabase.getInstance().getReference()
+                .child("Users").child("Drivers").child(driverID).child("CustomerRideID");
+
+        assignedCustomerRef.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                if(snapshot.exists()){
+
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+
+            }
+        });
+    }
+
+    /*private void getAssignedCustomerRequest() {
         assignedCustomerRef = FirebaseDatabase.getInstance().getReference()
                 .child("Users").child("Drivers").child(driverID).child("CustomerRideID");
 
@@ -267,7 +458,7 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
                 if(snapshot.exists()){
                     customerID = snapshot.getValue().toString();
 
-                    getAssignedCustomerPosition();
+                    //getAssignedCustomerPosition();
                 }
                 else {
                     //Если заказчик не привязан, то удаляем слушателей позиии заказчика, очищаем маркер позиции заказчика и говорим, что id заказчика нет
@@ -289,7 +480,7 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
 
             }
         });
-    }
+    }*/
 
     private void getAssignedCustomerPosition() {
         AssignedCustomerPosition = FirebaseDatabase.getInstance().getReference().child("Customer Requests")
