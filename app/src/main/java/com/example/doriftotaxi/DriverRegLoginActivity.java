@@ -35,17 +35,15 @@ public class DriverRegLoginActivity extends AppCompatActivity {
     FirebaseUser CurrentUser;
     DatabaseReference DriverDatabaseRef;
     String OnlineDriverID;
+    private DatabaseReference databaseReference;
 
 
     ProgressDialog loadingBar;
-    Boolean getUserInformationStatus = true;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_driver_reg_login);
-
-
 
         driverStatus = (TextView)findViewById(R.id.statusDriver);
         question = (TextView)findViewById(R.id.accountCreate);
@@ -53,12 +51,9 @@ public class DriverRegLoginActivity extends AppCompatActivity {
         signUpBtn = (Button)findViewById(R.id.signUpDriver);
         emailET = (EditText)findViewById(R.id.driverEmail);
         passwordET = (EditText)findViewById(R.id.driverPassword);
-
-        mAuth = FirebaseAuth.getInstance();
         loadingBar = new ProgressDialog(this);
 
-        CurrentUser = mAuth.getCurrentUser();
-
+        initialize();
         if(CurrentUser != null){
             openMap();
         }
@@ -107,25 +102,22 @@ public class DriverRegLoginActivity extends AppCompatActivity {
     }
 
     private void openMap() {
-        DatabaseReference databaseReference1 = FirebaseDatabase.getInstance().getReference();
-
-        databaseReference1.addValueEventListener(new ValueEventListener() {
+        databaseReference.child("Customers").addValueEventListener(new ValueEventListener() {
             @Override
-            public void onDataChange(@NonNull DataSnapshot snapshot) {
-                if(snapshot.child("Users").child("Drivers").child(CurrentUser.getUid()).exists()){
-                    if(snapshot.child("Users").child("Drivers").child(CurrentUser.getUid()).getChildrenCount() == 0){
-                        Intent driverIntent = new Intent(DriverRegLoginActivity.this, DriverSettingsActivity.class);
-                        driverIntent.putExtra("type", "Drivers");
-                        startActivity(driverIntent);
-                    } else {
-                        startActivity(new Intent(DriverRegLoginActivity.this, DriversMapActivity.class));
-                    }
-                }else if(snapshot.child("Users").child("Customers").child(CurrentUser.getUid()).exists()){
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                if(dataSnapshot.child(mAuth.getCurrentUser().getUid()).exists())
+                {
                     startActivity(new Intent(DriverRegLoginActivity.this, CustomersMapActivity.class));
                 }
+                else
+                {
+                    startActivity(new Intent(DriverRegLoginActivity.this, DriversMapActivity.class));
+                }
             }
+
             @Override
-            public void onCancelled(@NonNull DatabaseError error) {
+            public void onCancelled(@NonNull DatabaseError databaseError) {
+
             }
         });
     }
@@ -143,18 +135,6 @@ public class DriverRegLoginActivity extends AppCompatActivity {
                     loadingBar.dismiss();
                     CurrentUser = mAuth.getCurrentUser();
                     openMap();
-                    /*if(getUserInformationStatus) {
-                        Toast.makeText(DriverRegLoginActivity.this, "Успешный вход", Toast.LENGTH_SHORT).show();
-                        loadingBar.dismiss();
-                        Intent driverIntent = new Intent(DriverRegLoginActivity.this, DriversMapActivity.class);
-                        startActivity(driverIntent);
-                    } else {
-                        Toast.makeText(DriverRegLoginActivity.this, "Успешный вход", Toast.LENGTH_SHORT).show();
-                        loadingBar.dismiss();
-                        Intent driverIntent = new Intent(DriverRegLoginActivity.this, DriverSettingsActivity.class);
-                        driverIntent.putExtra("type", "Drivers");
-                        startActivity(driverIntent);
-                    }*/
                 }
                 else{
                     Toast.makeText(DriverRegLoginActivity.this, "Ошибка Авторизации", Toast.LENGTH_SHORT).show();
@@ -192,5 +172,11 @@ public class DriverRegLoginActivity extends AppCompatActivity {
             }
         }
     });
+    }
+
+    private void initialize() {
+        mAuth = FirebaseAuth.getInstance();
+        CurrentUser = mAuth.getCurrentUser();
+        databaseReference = FirebaseDatabase.getInstance().getReference().child("Users");
     }
 }

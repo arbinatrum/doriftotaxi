@@ -31,7 +31,7 @@ public class CustomerRegLogActivity extends AppCompatActivity {
 
     FirebaseUser CurrentUser;
     FirebaseAuth mAuth;
-    DatabaseReference CustomerDatabaseRef;
+    DatabaseReference CustomerDatabaseRef, databaseReference;
     String OnlineCustomerID;
 
 
@@ -49,8 +49,7 @@ public class CustomerRegLogActivity extends AppCompatActivity {
         emailET = (EditText)findViewById(R.id.customerEmail);
         passwordET = (EditText)findViewById(R.id.customerPassword);
 
-        mAuth = FirebaseAuth.getInstance();
-        CurrentUser = mAuth.getCurrentUser();
+        initialize();
 
         if(CurrentUser != null){
             openMap();
@@ -103,25 +102,22 @@ public class CustomerRegLogActivity extends AppCompatActivity {
     }
 
     private void openMap() {
-        DatabaseReference databaseReference1 = FirebaseDatabase.getInstance().getReference();
-
-        databaseReference1.addValueEventListener(new ValueEventListener() {
+        databaseReference.child("Customers").addValueEventListener(new ValueEventListener() {
             @Override
-            public void onDataChange(@NonNull DataSnapshot snapshot) {
-                if(snapshot.child("Users").child("Drivers").child(CurrentUser.getUid()).exists()){
-                    if(snapshot.child("Users").child("Drivers").child(CurrentUser.getUid()).getChildrenCount() == 0){
-                        Intent driverIntent = new Intent(CustomerRegLogActivity.this, DriverSettingsActivity.class);
-                        driverIntent.putExtra("type", "Drivers");
-                        startActivity(driverIntent);
-                    } else {
-                        startActivity(new Intent(CustomerRegLogActivity.this, DriversMapActivity.class));
-                    }
-                }else if(snapshot.child("Users").child("Customers").child(CurrentUser.getUid()).exists()){
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                if(dataSnapshot.child(mAuth.getCurrentUser().getUid()).exists())
+                {
                     startActivity(new Intent(CustomerRegLogActivity.this, CustomersMapActivity.class));
                 }
+                else
+                {
+                    startActivity(new Intent(CustomerRegLogActivity.this, DriversMapActivity.class));
+                }
             }
+
             @Override
-            public void onCancelled(@NonNull DatabaseError error) {
+            public void onCancelled(@NonNull DatabaseError databaseError) {
+
             }
         });
     }
@@ -174,5 +170,11 @@ public class CustomerRegLogActivity extends AppCompatActivity {
                 }
             }
         });
+    }
+
+    private void initialize() {
+        mAuth = FirebaseAuth.getInstance();
+        CurrentUser = mAuth.getCurrentUser();
+        databaseReference = FirebaseDatabase.getInstance().getReference().child("Users");
     }
 }

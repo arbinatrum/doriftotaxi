@@ -98,37 +98,6 @@ public class WelcomeActivity extends AppCompatActivity {
     }
 
     private void openMap() {
-        /*final ProgressDialog progressDialog = new ProgressDialog(this);
-        progressDialog.setTitle("Загрузка информации");
-        progressDialog.setMessage("Пожалуйста, подождите");
-        progressDialog.show();*/
-        //progressDialog.dismiss();
-
-        /*DatabaseReference databaseReference1 = FirebaseDatabase.getInstance().getReference();
-        databaseReference1.addValueEventListener(new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot snapshot) {
-                if(snapshot.child("Users").child("Drivers").child(CurrentUser.getUid()).exists()){
-                    progressDialog.dismiss();
-                    if(snapshot.child("Users").child("Drivers").child(CurrentUser.getUid()).getChildrenCount() == 0){
-                        Intent driverIntent = new Intent(WelcomeActivity.this, DriverSettingsActivity.class);
-                        driverIntent.putExtra("type", "Drivers");
-                        startActivity(driverIntent);
-                    } else {
-                        startActivity(new Intent(WelcomeActivity.this, DriversMapActivity.class));
-                    }
-                }else if(snapshot.child("Users").child("Customers").child(CurrentUser.getUid()).exists()){
-                    progressDialog.dismiss();
-                    startActivity(new Intent(WelcomeActivity.this, CustomersMapActivity.class));
-                }
-            }
-
-            @Override
-            public void onCancelled(@NonNull DatabaseError error) {
-
-            }
-        });*/
-
         databaseReference.child("Customers").addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot dataSnapshot) {

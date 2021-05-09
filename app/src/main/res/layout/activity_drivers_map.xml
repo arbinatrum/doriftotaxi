@@ -39,6 +39,94 @@
         android:textSize="20dp"
         />
 
+    <LinearLayout
+        android:id="@+id/lin_info_for_drivers"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_above="@id/driver_status_button"
+        android:layout_margin="5dp"
+        android:background="@drawable/edit_text_shape"
+        android:backgroundTint="@android:color/white"
+        android:orientation="vertical"
+        >
+
+        <RelativeLayout
+            android:id="@+id/rel_upper"
+            android:layout_width="match_parent"
+            android:layout_height="35dp"
+            android:layout_weight="1"
+            android:background="@drawable/welcome_button">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="25dp"
+                android:gravity="center"
+                android:layout_centerVertical="true"
+                android:text="Информация о клиенте и первой точке"
+                android:textColor="@android:color/black"
+                android:layout_centerInParent="true"
+                />
+
+        </RelativeLayout>
+
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_weight="1"
+                android:layout_marginStart="10dp"
+                android:layout_marginTop="20dp"
+                android:layout_marginBottom="20dp"
+                android:layout_marginEnd="20dp"
+                android:layout_gravity="center_vertical"
+                >
+                <TextView
+                    android:id="@+id/customer_name"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textSize="16sp"
+                    android:text="Имя заказчика"
+                    android:layout_margin="10dp"
+                    android:singleLine="false"
+                    />
+
+                <TextView
+                    android:id="@+id/customer_phone"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textSize="16sp"
+                    android:text="Номер телефона"
+                    android:layout_margin="10dp"
+                    android:singleLine="true"
+                    />
+
+                <TextView
+                    android:id="@+id/customer_address"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textSize="16sp"
+                    android:text="Начальная точка"
+                    android:layout_margin="10dp"
+                    android:singleLine="false"
+                    />
+            </LinearLayout>
+    </LinearLayout>
+
+    <Button
+        android:id="@+id/driver_status_button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_centerHorizontal="true"
+        android:layout_margin="15dp"
+        android:text="Клиент в машине"
+        android:textAllCaps="false"
+        android:textSize="20dp"
+        android:layout_above="@id/driver_Approved_button"
+        android:background="@drawable/info_block"
+        android:textColor="@android:color/black"
+        />
+
     <Button
         android:id="@+id/driver_Approved_button"
         android:layout_width="300dp"

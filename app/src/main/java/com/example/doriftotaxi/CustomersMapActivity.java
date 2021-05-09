@@ -98,13 +98,17 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
         @Override
         public void onLocationResult(LocationResult locationResult) {
             if (locationResult == null) {
-                Log.d("TAG", "onLocationResult равен нулю ");
+                //Log.d("TAG", "onLocationResult равен нулю ");
                 return;
             }
             for (Location location : locationResult.getLocations()) {
                 //displayLocation();
-                Log.d("TAG", "onLocationResult: " + location.toString());
+                //Log.d("TAG", "onLocationResult: " + location.toString());
                 lastLocation = location;
+            }
+            if(status && lastLocation!= null){
+                zoomToUserLocation();
+                status = false;
             }
         }
     };
@@ -127,7 +131,7 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
     int radius = 1;
     Boolean driverFound = false, requestType = false, status = true;
     Boolean StateCustomer = true;
-    String driverFoundID;
+    String driverFoundID = "";
 
     //Информация о такси
     private TextView txtName, txtPhone, txtCar;
@@ -193,14 +197,13 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
         bottomSheetBehavior.addBottomSheetCallback(new BottomSheetBehavior.BottomSheetCallback() {
             @Override
             public void onStateChanged(@NonNull View bottomSheet, int newState) {
-                Log.d("status Behavior",String.format("state is %d",bottomSheetBehavior.getState()));
+                //Log.d("status Behavior",String.format("state is %d",bottomSheetBehavior.getState()));
                 beforeBottomSheetState = bottomSheetBehavior.getState();
-                if(bottomSheetBehavior.getState() == BottomSheetBehavior.STATE_HALF_EXPANDED) dialog.show();
             }
 
             @Override
             public void onSlide(@NonNull View bottomSheet, float slideOffset) {
-                Log.d("Status",String.format("Положения - %f",slideOffset));
+                //Log.d("Status",String.format("Положения - %f",slideOffset));
                 if (slideOffset > 0.251 && !searchBarA.hasFocus() && !searchBarB.hasFocus()) {
                     bottomSheetBehavior.setState(BottomSheetBehavior.STATE_HALF_EXPANDED);
                 }
@@ -324,32 +327,32 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
         callTaxiButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                if (geoQuery != null) {
+                    geoQuery.removeAllListeners();
+                    DriversLocationRef.removeEventListener(DriverLocationRefListener);
+                }
+                if (driverFound) {
+                    DriversRef = FirebaseDatabase.getInstance().getReference()
+                            .child("Users").child("Drivers").child(driverFoundID).child("CustomerRideID");
+                    DriversRef.removeValue();
+                    driverFoundID = null;
+                }
+                driverFound = false;
+                radius = 1;
+
+                if (PickUpMarker != null) {
+                    PickUpMarker.remove();
+                }
+
+                if (driverMarker != null) {
+                    driverMarker.remove();
+                }
                 if (StateCustomer) { //Если есть информация о заказчике, то позволяем ему оформить заказ
                     if (searchBarA.length() > 0 && searchBarB.length() > 0 ) { //Если поля заполнены, то начинаем поиск
                         searchA = searchBarA.getText().toString();
                         searchB = searchBarB.getText().toString();
                         if (requestType) { //Если еще раз нажали на эту кнопку, то отменяем поиск заказа
                             requestType = false;
-                            if (geoQuery != null) {
-                                geoQuery.removeAllListeners();
-                                DriversLocationRef.removeEventListener(DriverLocationRefListener);
-                            }
-                            if (driverFound) {
-                                DriversRef = FirebaseDatabase.getInstance().getReference()
-                                        .child("Users").child("Drivers").child(driverFoundID).child("CustomerRideID");
-                                DriversRef.removeValue();
-                                driverFoundID = null;
-                            }
-                            driverFound = false;
-                            radius = 1;
-
-                            if (PickUpMarker != null) {
-                                PickUpMarker.remove();
-                            }
-
-                            if (driverMarker != null) {
-                                driverMarker.remove();
-                            }
 
                             geoFire1 = new GeoFire(CustomerDatabaseReference);
                             geoFire1.removeLocation(customerID);
@@ -364,13 +367,13 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
                             PickUpMarker = mMap.addMarker(new MarkerOptions().position(CustomerPosition).title("Пункт подачи"));
                             mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(CustomerPosition, 20.0f));
                             bottomSheetBehavior.setState(BottomSheetBehavior.STATE_COLLAPSED);
-                            //getNearbyDrivers();
+                            getNearbyDrivers();
                         }
                     } else if(requestType){
                         requestType = false;
                         if (geoQuery != null) {
                             geoQuery.removeAllListeners();
-                            DriversLocationRef.removeEventListener(DriverLocationRefListener);
+                            if(DriverLocationRefListener != null) DriversLocationRef.removeEventListener(DriverLocationRefListener);
                         }
                         if (driverFound) {
                             DriversRef = FirebaseDatabase.getInstance().getReference()
@@ -547,10 +550,7 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
 
     @Override
     public void onConnected(@Nullable Bundle bundle) {
-        if(status && lastLocation!= null){
-            zoomToUserLocation();
-            status = false;
-        }
+
     }
 
     private void checkSettingsAndStartLocationUpdated() {
@@ -627,7 +627,6 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
     protected void onStop() {
         super.onStop();
         Log.d("status", "Запустился onStop()");
-        //checkStatus();
         stopLocationUpdate();
     }
 
@@ -637,7 +636,7 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
 
         Log.d("status", "Запустился onDestroy()");
 
-        if (requestType) {
+        if (requestType && driverFoundID == "") {
             GeoFire geoFire = new GeoFire(CustomerDatabaseReference);
             geoFire.removeLocation(customerID);
             requestType = false;
@@ -686,7 +685,7 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
                                 String searchPointA = snapshot.child("adressA").getValue().toString();
                                 String searchPointB = snapshot.child("adressB").getValue().toString();
                                 searchA = searchPointA;
-                                searchB = searchPointA;
+                                searchB = searchPointB;
                             }
 
                             CustomerPosition = new LatLng(lastLocation.getLatitude(), lastLocation.getLongitude());
@@ -732,10 +731,6 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
         geoQuery.removeAllListeners();
 
         //Здесь нужно добавить код определяющий принял ли таксист у себя заказ или нет.
-
-        /*Если таксист у себя принял данный заказ, то выполняем следующиее:
-        Если водитель не занят и статус запроса True, то берем id заказчика и в Drivers/driverFoundID/CustomerRideID
-        создаем новый элемент с customerID.*/
         geoQuery.addGeoQueryEventListener(new GeoQueryEventListener() {
             @Override
             public void onKeyEntered(String key, GeoLocation location) {
@@ -747,8 +742,7 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
                     HashMap driverMap = new HashMap();
                     driverMap.put("CustomerRideID", customerID);
                     DriversRef.updateChildren(driverMap);
-                    //Привязка водителя к заказчику после нахождения
-
+                    Toast.makeText(CustomersMapActivity.this, "Запрос отправлен", Toast.LENGTH_SHORT).show();
 
                     //GetDriverLocation();
                     //showLocation(driverMarker, 15); //Показываем заказчику расположение водителя
@@ -757,7 +751,8 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
 
             @Override
             public void onKeyExited(String key) {
-
+                DriversRef = FirebaseDatabase.getInstance().getReference().child("Users").child("Drivers").child(driverFoundID).child("CustomerRideID");
+                DriversRef.removeValue();
             }
 
             @Override
@@ -767,11 +762,61 @@ public class CustomersMapActivity extends FragmentActivity implements OnMapReady
 
             @Override
             public void onGeoQueryReady() {
-                //Если водитель не найден, то увеличиваем радиус
-                if (!driverFound) {
-                    radius = radius + 1;
-                    getNearbyDrivers();
-                }
+                DriversRef = FirebaseDatabase.getInstance().getReference().child("Users").child("Drivers").child(driverFoundID).child("CustomerRideID");
+                DriversRef.child(customerID).addValueEventListener(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        if(snapshot.exists() && driverFoundID != ""){
+                            driverFound = true;
+                            Log.d("Status Search", "CustomerRideID слушатель");
+                        } else if(driverFoundID != ""){
+                            CustomerDatabaseReference.child(customerID).child("CustomersBanList").child(driverFoundID).addValueEventListener(new ValueEventListener() {
+                                @Override
+                                public void onDataChange(@NonNull DataSnapshot snapshot) {
+                                    if(snapshot.exists()){
+                                        driverFound = false;
+                                        getNearbyDrivers();
+                                        Log.d("Status Search", "CustomersBanList слушатель");
+                                    }
+                                }
+
+                                @Override
+                                public void onCancelled(@NonNull DatabaseError error) {
+
+                                }
+                            });
+                        }
+                    }
+
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError error) {
+
+                    }
+                });
+                Thread thread = new Thread(){
+                    @Override
+                    public void run() {
+                        super.run();
+                        {
+                            try{
+                                sleep(3000);
+                            }
+                            catch(Exception e) {
+                                e.printStackTrace();
+                            }
+                            finally {
+                                //Если водитель не найден, то увеличиваем радиус
+                                if (!driverFound && requestType) {
+                                    radius = radius + 1;
+                                    getNearbyDrivers();
+                                    Log.d("Status Search", "Водитель не найден, ищу нового");
+                                    //Toast.makeText(CustomersMapActivity.this, "Водитель не найден, ищу нового", Toast.LENGTH_SHORT).show();
+                                }
+                            }
+                        }
+                    }
+                };
+                thread.start();
             }
 
             @Override

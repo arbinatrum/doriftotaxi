@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/alert_dialog_customers"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_centerInParent="true"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:background="@android:color/white"
+    >
+
+    <LinearLayout
+        android:id="@+id/alert_dialog"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="7dp"
+        android:background="@drawable/edit_text_shape"
+        android:backgroundTint="@android:color/white"
+        android:orientation="vertical"
+        tools:ignore="MissingConstraints">
+
+        <RelativeLayout
+            android:id="@+id/rel_upper"
+            android:layout_width="wrap_content"
+            android:layout_height="60dp"
+            android:background="@drawable/welcome_button"
+            android:gravity="top"
+            android:layout_alignParentStart="true">
+
+            <TextView
+                android:layout_width="350dp"
+                android:layout_height="25dp"
+                android:gravity="center"
+                android:layout_centerVertical="true"
+                android:text="Новый заказ поблизости"
+                android:textColor="@android:color/black"
+                android:layout_centerInParent="true"
+                android:textSize="20dp"
+                />
+
+        </RelativeLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:layout_margin="10dp"
+            >
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textSize="20sp"
+                android:text="Откуда:"
+                android:paddingLeft="5dp"
+                android:singleLine="true"
+                android:textColor="@android:color/black"
+                />
+
+        <TextView
+            android:id="@+id/pointA"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textSize="16sp"
+            android:text="Пункт А"
+            android:singleLine="false"
+            android:layout_margin="5dp"
+            />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textSize="20sp"
+                android:paddingLeft="5dp"
+                android:text="Куда:"
+                android:singleLine="true"
+                android:textColor="@android:color/black"
+                />
+        <TextView
+            android:id="@+id/pointB"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textSize="16sp"
+            android:text="Пункт Б"
+            android:singleLine="false"
+            android:layout_margin="5dp"
+            />
+
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="horizontal"
+            android:layout_weight="1"
+            >
+        <Button
+            android:id="@+id/driver_accept_button"
+            android:layout_width="wrap_content"
+            android:layout_height="60dp"
+            android:layout_weight="1"
+            android:background="@drawable/info_block"
+            android:textColor="@android:color/black"
+            android:text="Принять"
+            android:textAllCaps="false"
+            android:textSize="20dp"
+            android:layout_margin="10dp"
+            />
+
+        <Button
+            android:id="@+id/driver_reject_button"
+            android:layout_width="wrap_content"
+            android:layout_height="60dp"
+            android:layout_weight="1"
+            android:background="@drawable/info_block"
+            android:textColor="@android:color/black"
+            android:text="Отклонить"
+            android:textAllCaps="false"
+            android:textSize="20dp"
+            android:layout_margin="10dp"
+            />
+        </LinearLayout>
+
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
