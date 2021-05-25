@@ -35,6 +35,7 @@
         android:layout_margin="5dp"
         android:text="Выйти"
         android:layout_alignParentEnd="true"/>
+
     
     <LinearLayout
         android:id="@+id/relLayoutCustomer"

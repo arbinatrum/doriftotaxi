@@ -6,6 +6,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentSender;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
+import android.location.Geocoder;
 import android.location.Location;
 import android.location.LocationManager;
 import android.os.Bundle;
@@ -27,6 +29,7 @@ import androidx.fragment.app.FragmentActivity;
 
 import com.firebase.geofire.GeoFire;
 import com.firebase.geofire.GeoLocation;
+import com.firebase.geofire.core.GeoHash;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.ResolvableApiException;
@@ -42,6 +45,9 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
+import com.google.android.gms.maps.model.Circle;
+import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
@@ -55,6 +61,7 @@ import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
+import com.squareup.picasso.Picasso;
 
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
@@ -74,6 +81,7 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
 
     FusedLocationProviderClient fusedLocationProviderClient;
     LocationRequest locationRequest;
+    double lat = 0, lon = 0;
     LocationCallback locationCallback = new LocationCallback() {
         @Override
         public void onLocationResult(LocationResult locationResult) {
@@ -99,14 +107,43 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
                 zoomToUserLocation();
                 status = false;
             }
+            if(mMap != null){
+                setUserLocationMarker(locationResult.getLastLocation());
+            }
+            if(DistanceCheckStatus){
+                Location location = new Location("");
+                location.setLatitude(PickUpMarker.getPosition().latitude);
+                location.setLongitude(PickUpMarker.getPosition().longitude);
+                double distance = lastLocation.distanceTo(location);
+
+                if(distance < 100){
+                    DistanceCheckStatus = false;
+                    DriverInfoBtn.setVisibility(View.VISIBLE);
+                    DriverInfoBtn.setEnabled(true);
+                }
+            }
+            if(RoadToLastPointStatus){
+                Location location = new Location("");
+                location.setLatitude(RoadMarker.getPosition().latitude);
+                location.setLongitude(RoadMarker.getPosition().longitude);
+                double distance = lastLocation.distanceTo(location);
+
+                if(distance < 100) {
+                    RoadToLastPointStatus = false;
+                    DriverInfoBtn.setEnabled(true);
+                    DriverInfoBtn.setVisibility(View.VISIBLE);
+                }
+            }
         }
     };
 
     private GoogleMap mMap;
+    private Geocoder geocoder;
     GoogleApiClient googleApiClient;
-    Location lastLocation, FirstLocation;
+    Location lastLocation;
     LocationManager locationManager;
-    Marker PickUpMarker;
+    Marker PickUpMarker, RoadMarker;
+    Marker userLocationMarker;
 
     private String driverID, customerID = "";
     private Button DriverApprovedButton;
@@ -116,7 +153,11 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
     private LatLng DriverPosition;
     private boolean status = true, requestType = false;
 
+    //Диалоговое окно
     private Dialog dialog;
+    private TextView pointA, pointB, textOrderFound, finishPrice;
+    private Button acceptBtn, rejectBtn;
+    private LinearLayout linearLayout;
 
     //Информация о заказчике
     private TextView txtName, txtPhone, txtAdress;
@@ -131,9 +172,10 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
     private ValueEventListener assignedCustomerRefListener;
     private int it = 0;
     private String orderID = "";
-
-    public DriversMapActivity() {
-    }
+    private String pointBString = "", pointAString = "";
+    private boolean DistanceCheckStatus = false;
+    private boolean RoadToLastPointStatus = false;
+    private String price = "0";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -156,8 +198,15 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
         dialog.setCancelable(false);
         dialog.getWindow().getAttributes().windowAnimations = R.style.animation;
 
-        Button acceptBtn = dialog.findViewById(R.id.driver_accept_button);
-        Button rejectBtn = dialog.findViewById(R.id.driver_reject_button);
+        textOrderFound = dialog.findViewById(R.id.text_order_found);
+        acceptBtn = dialog.findViewById(R.id.driver_accept_button);
+        rejectBtn = dialog.findViewById(R.id.driver_reject_button);
+        pointA = dialog.findViewById(R.id.pointA);
+        pointB = dialog.findViewById(R.id.pointB);
+        linearLayout = dialog.findViewById(R.id.lin_layout);
+        finishPrice = dialog.findViewById(R.id.finish_price);
+
+        finishPrice.setVisibility(View.GONE);
 
         //Информация о такси
         txtName = (TextView) findViewById(R.id.customer_name);
@@ -166,39 +215,108 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
         LinInfo = findViewById(R.id.lin_info_for_drivers);
         DriverInfoBtn = findViewById(R.id.driver_status_button);
 
-        LinInfo.setVisibility(View.INVISIBLE);
+        LinInfo.setVisibility(View.GONE);
         LinInfo.setEnabled(false);
-        DriverInfoBtn.setVisibility(View.INVISIBLE);
+        DriverInfoBtn.setVisibility(View.GONE);
         DriverInfoBtn.setEnabled(false);
-
-        //Кнопка для принятия клиента на борт
-        DriverInfoBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-
-            }
-        });
+        DriverInfoBtn.setText("Клиент в машине");
 
         //Слушатель кнопки на прием заказа
         acceptBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                dialog.dismiss();
-                it = 1;
-                assignedCustomerRef = FirebaseDatabase.getInstance().getReference()
-                        .child("Users").child("Drivers").child(driverID).child("CustomerRideID");
+                if(DriverApprovedButton.getText() == "Отменить заказ" & acceptBtn.getText().toString() != "Оплачено"){ //Отменить заказ когда он уже создан и таксист решил отменить заказ до того, как заказчик сел в машину
+                    dialog.dismiss();
+                    DisconnectDriver();
+                    requestType = false;
+                    customerID = "";
+                    orderID = "";
+                    it = 1;
+                    LinInfo.setVisibility(View.GONE);
+                    LinInfo.setEnabled(false);
+                    DriverInfoBtn.setVisibility(View.GONE);
+                    DriverInfoBtn.setEnabled(false);
 
-                assignedCustomerRef.child(customerID).removeValue();
-                GeoFire geoFire = new GeoFire(DriverDatabaseRef);
-                geoFire.removeLocation(driverID, new GeoFire.CompletionListener() {
-                    @Override
-                    public void onComplete(String key, DatabaseError error) {
-                        requestType = false;
-                        Toast.makeText(DriversMapActivity.this, "Заказ принят", Toast.LENGTH_SHORT).show();
+                    if (PickUpMarker != null & RoadMarker != null) {
+                        PickUpMarker.remove();
+                        RoadMarker.remove();
                     }
-                });
-                createOrder();
-                //Необходимо дописать метод создания нового заказа
+                    DriverApprovedButton.setText("Начать поиск заказов");
+                    zoomToUserLocation();
+                } else if(textOrderFound.getText().toString() == "Новый заказ поблизости!" & acceptBtn.getText().toString() != "Оплачено"){ //Принять заказ при нахождении заказчика
+                    dialog.dismiss();
+                    it = 1;
+
+                    assignedCustomerRef = FirebaseDatabase.getInstance().getReference()
+                            .child("Users").child("Drivers").child(driverID).child("CustomerRideID");
+                    assignedCustomerRef.child(customerID).removeValue();
+
+                    GeoFire geoFire = new GeoFire(DriverDatabaseRef);
+                    geoFire.removeLocation(driverID, new GeoFire.CompletionListener() {
+                        @Override
+                        public void onComplete(String key, DatabaseError error) {
+                            requestType = false;
+                            Toast.makeText(DriversMapActivity.this, "Заказ принят", Toast.LENGTH_SHORT).show();
+                            createOrder();
+                        }
+                    });
+                } else if(acceptBtn.getText().toString() == "Оплачено"){ //Окончание заказа, таксист привез заказчика на место назначения
+                    acceptBtn.setEnabled(false);
+                    DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference()
+                            .child("Orders")
+                            .child(orderID)
+                            .child("status");
+                    databaseReference.setValue("Закончен", new DatabaseReference.CompletionListener() {
+                        @Override
+                        public void onComplete(@Nullable DatabaseError error, @NonNull DatabaseReference ref) {
+                            DatabaseReference orderRef = FirebaseDatabase.getInstance().getReference()
+                                    .child("Orders")
+                                    .child(orderID);
+                            String date = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(Calendar.getInstance().getTime());
+
+                            HashMap<String, Object> userMap = new HashMap<>();
+                            userMap.put("endTimeTrip", date);
+
+                            orderRef.updateChildren(userMap, new DatabaseReference.CompletionListener() {
+                                @Override
+                                public void onComplete(@Nullable DatabaseError error, @NonNull DatabaseReference ref) {
+                                    dialog.dismiss();
+                                    if (RoadMarker != null) {
+                                        RoadMarker.remove();
+                                    }
+                                    customerID = "";
+                                    orderID = "";
+                                    it = 1;
+                                    LinInfo.setVisibility(View.GONE);
+                                    LinInfo.setEnabled(false);
+                                    DriverInfoBtn.setVisibility(View.GONE);
+                                    DriverInfoBtn.setEnabled(false);
+                                    linearLayout.setVisibility(View.VISIBLE);
+                                    finishPrice.setVisibility(View.GONE);
+                                    acceptBtn.setText("Принять");
+                                    acceptBtn.setEnabled(true);
+                                    rejectBtn.setText("Отклонить");
+                                    textOrderFound.setText("Новый заказ поблизости!");
+                                    rejectBtn.setEnabled(true);
+
+                                    DriverApprovedButton.setVisibility(View.VISIBLE);
+                                    DriverApprovedButton.setEnabled(true);
+                                    DriverApprovedButton.setText("Отменить поиск заказов");
+
+                                    requestType = true;
+                                    GeoFire geoFire = new GeoFire(DriverDatabaseRef);
+                                    geoFire.setLocation(driverID, new GeoLocation(lastLocation.getLatitude(), lastLocation.getLongitude()), new GeoFire.CompletionListener() {
+                                        @Override
+                                        public void onComplete(String key, DatabaseError error) {
+                                            zoomToUserLocation();
+                                            getAssignedCustomerRequest();
+                                        }
+                                    });
+                                }
+                            });
+                        }
+                    });
+                }
             }
         });
 
@@ -206,54 +324,58 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
         rejectBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                dialog.dismiss();
-                final DatabaseReference CustomerDatabaseRef = FirebaseDatabase.getInstance().getReference().
-                        child("Customers Requests").child(customerID);
-                CustomerDatabaseRef.addListenerForSingleValueEvent(new ValueEventListener() {
-                    @Override
-                    public void onDataChange(@NonNull DataSnapshot snapshot) {
-                        if(snapshot.exists()){
-                            DatabaseReference reference = CustomerDatabaseRef.child("CustomersBanList").child(driverID);
-                            reference.setValue(true);
-                            DatabaseReference DriverRemoveRideId = FirebaseDatabase.getInstance().getReference().child("Users").child("Drivers").child(driverID).child("CustomerRideID").child(customerID);
-                            DriverRemoveRideId.removeValue(new DatabaseReference.CompletionListener() {
-                                @Override
-                                public void onComplete(@Nullable DatabaseError error, @NonNull DatabaseReference ref) {
-                                    Toast.makeText(DriversMapActivity.this, "Заказ отклонен", Toast.LENGTH_SHORT).show();
-                                }
-                            });
-                        } else {
-                            DatabaseReference DriverRemoveRideId = FirebaseDatabase.getInstance().getReference().child("Users").child("Drivers").child(driverID).child("CustomerRideID").child(customerID);
-                            DriverRemoveRideId.removeValue(new DatabaseReference.CompletionListener() {
-                                @Override
-                                public void onComplete(@Nullable DatabaseError error, @NonNull DatabaseReference ref) {
-                                    Toast.makeText(DriversMapActivity.this, "Заказ отклонен", Toast.LENGTH_SHORT).show();
-                                }
-                            });
+                if (DriverApprovedButton.getText() == "Отменить заказ") { //Диалоговое окно "Отменить заказ?", в котором пользователь выбирает "нет"
+                    dialog.dismiss();
+                } else { //Отменить заказ при нахождении заказчика
+                    dialog.dismiss();
+                    final DatabaseReference CustomerDatabaseRef = FirebaseDatabase.getInstance().getReference().
+                            child("Customers Requests").child(customerID);
+                    CustomerDatabaseRef.addListenerForSingleValueEvent(new ValueEventListener() {
+                        @Override
+                        public void onDataChange(@NonNull DataSnapshot snapshot) {
+                            if (snapshot.exists()) {
+                                DatabaseReference reference = CustomerDatabaseRef.child("CustomersBanList").child(driverID);
+                                reference.setValue(true);
+                                DatabaseReference DriverRemoveRideId = FirebaseDatabase.getInstance().getReference().child("Users").child("Drivers").child(driverID).child("CustomerRideID").child(customerID);
+                                DriverRemoveRideId.removeValue(new DatabaseReference.CompletionListener() {
+                                    @Override
+                                    public void onComplete(@Nullable DatabaseError error, @NonNull DatabaseReference ref) {
+                                        Toast.makeText(DriversMapActivity.this, "Заказ отклонен", Toast.LENGTH_SHORT).show();
+                                    }
+                                });
+                            } else {
+                                DatabaseReference DriverRemoveRideId = FirebaseDatabase.getInstance().getReference().child("Users").child("Drivers").child(driverID).child("CustomerRideID").child(customerID);
+                                DriverRemoveRideId.removeValue(new DatabaseReference.CompletionListener() {
+                                    @Override
+                                    public void onComplete(@Nullable DatabaseError error, @NonNull DatabaseReference ref) {
+                                        Toast.makeText(DriversMapActivity.this, "Заказ отклонен", Toast.LENGTH_SHORT).show();
+                                    }
+                                });
+                            }
                         }
-                    }
 
-                    @Override
-                    public void onCancelled(@NonNull DatabaseError error) {
+                        @Override
+                        public void onCancelled(@NonNull DatabaseError error) {
 
-                    }
-                });
-                Thread thread = new Thread(){
-                    @Override
-                    public void run() {
-                        super.run();
-                        try {
-                            sleep(3000);
-                        }catch (Exception e){
-                            e.printStackTrace();
-                        }finally {
-                            customerID = "";
-                            getAssignedCustomerRequest();
                         }
-                    }
-                };
-                thread.start();
+                    });
+                    Thread thread = new Thread() {
+                        @Override
+                        public void run() {
+                            super.run();
+                            try {
+                                sleep(3000);
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            } finally {
+                                customerID = "";
+                                getAssignedCustomerRequest();
+                            }
+                        }
+                    };
+                    thread.start();
 
+                }
             }
         });
 
@@ -284,34 +406,24 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
         DriverApprovedButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if(requestType && customerID == "") {
+                if(requestType && customerID == "") { //Отменили поиск заказов
                     DisconnectDriver();
                     requestType = false;
                     DriverApprovedButton.setText("Начать поиск заказов");
                     zoomToUserLocation();
-                } else if(customerID == "" && !requestType){
+                } else if(customerID == "" && !requestType){ //Начали поиск заказов
                     zoomToUserLocation(); //Переводим камеру на таксиста
                     requestType = true;
                     DriverApprovedButton.setText("Отменить поиск заказов");
                     GeoFire geoFire = new GeoFire(DriverDatabaseRef);
                     geoFire.setLocation(driverID, new GeoLocation(lastLocation.getLatitude(), lastLocation.getLongitude()));
                     getAssignedCustomerRequest();
-                } else if(customerID != "" && !requestType && orderID != ""){
-                    DisconnectDriver();
-                    requestType = false;
-                    customerID = "";
-                    orderID = "";
-                    it = 1;
-                    LinInfo.setVisibility(View.INVISIBLE);
-                    LinInfo.setEnabled(false);
-                    DriverInfoBtn.setVisibility(View.INVISIBLE);
-                    DriverInfoBtn.setEnabled(false);
-
-                    if (PickUpMarker != null) {
-                        PickUpMarker.remove();
-                    }
-                    DriverApprovedButton.setText("Начать поиск заказов");
-                    zoomToUserLocation();
+                } else if(customerID != "" && !requestType && orderID != ""){ //Отменили заказ после нахождения заказчика
+                    textOrderFound.setText("Отменить заказ?");
+                    linearLayout.setVisibility(View.GONE);
+                    acceptBtn.setText("Да");
+                    rejectBtn.setText("Нет");
+                    dialog.show();
                 }
 
                 //Тут дописать метод для отмены заказа уже в процессе поездки, но до принятия пассажира на борт
@@ -322,7 +434,36 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
         DriverInfoBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-
+                if(DriverInfoBtn.getText().toString() == "Клиент в машине") {
+                    if(PickUpMarker != null) PickUpMarker.remove(); //Как прибыли на пункт нахождения заказчика удаляем данный пункт на карте
+                    DriverInfoBtn.setText("Поездка завершена");
+                    DriverInfoBtn.setEnabled(false);
+                    DriverApprovedButton.setVisibility(View.GONE);
+                    DriverApprovedButton.setEnabled(false);
+                    DriverInfoBtn.setVisibility(View.GONE);
+                    DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference()
+                            .child("Orders")
+                            .child(orderID)
+                            .child("status");
+                    databaseReference.setValue("Выполняется", new DatabaseReference.CompletionListener() {
+                        @Override
+                        public void onComplete(@Nullable DatabaseError error, @NonNull DatabaseReference ref) {
+                            txtAdress.setText(pointBString);
+                            startRoadToLastPoint();
+                        }
+                    });
+                } else
+                    if(DriverInfoBtn.getText().toString() == "Поездка завершена"){
+                        linearLayout.setVisibility(View.GONE);
+                        acceptBtn.setText("Оплачено");
+                        rejectBtn.setText("Оставить отзыв");
+                        rejectBtn.setEnabled(false);
+                        textOrderFound.setText("Поездка окончена!");
+                        finishPrice.setText("Сумма за поездку: " + price + "Р");
+                        finishPrice.setVisibility(View.VISIBLE);
+                        dialog.show();
+                        //Для вывода диалога на конечный диалог
+                    }
             }
         });
 
@@ -340,13 +481,14 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
             }
         });
 
+
+        geocoder = new Geocoder(this);
         fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
 
         locationRequest = LocationRequest.create();
-        locationRequest.setInterval(4000); //Интервал обновления геолокации
-        locationRequest.setFastestInterval(2000);
+        locationRequest.setInterval(500); //Интервал обновления геолокации
+        locationRequest.setFastestInterval(500);
         locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
-        locationRequest.setSmallestDisplacement(10);
     }
 
     private void askLocationPermission() {
@@ -365,7 +507,7 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
         switch (requestCode) {
             case MY_PERMISSION_REQUEST_CODE:
                 if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    enableUserLocation();
+                    //enableUserLocation();
                     checkSettingsAndStartLocationUpdated();
                     buildGoogleApiClient();
                 }
@@ -379,8 +521,9 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
         mMap = googleMap;
         Log.d("status", "Запустился onMapReady()");
         mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(56.129057, 40.406635), 12.0f));
+        mMap.setMapType(GoogleMap.MAP_TYPE_NORMAL);
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-            enableUserLocation();
+            //enableUserLocation();
             zoomToUserLocation();
         } else {
             if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.ACCESS_FINE_LOCATION)) {
@@ -391,19 +534,6 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
         }
     }
 
-    private void enableUserLocation() {
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            // TODO: Consider calling
-            //    ActivityCompat#requestPermissions
-            // here to request the missing permissions, and then overriding
-            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-            //                                          int[] grantResults)
-            // to handle the case where the user grants the permission. See the documentation
-            // for ActivityCompat#requestPermissions for more details.
-            return;
-        }
-        mMap.setMyLocationEnabled(true);
-    }
 
     private void zoomToUserLocation() {
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
@@ -463,6 +593,24 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
 
     }
 
+    private void setUserLocationMarker(Location location){
+        LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
+
+        if (userLocationMarker == null){
+            //Создаем новый маркер
+            MarkerOptions markerOptions = new MarkerOptions();
+            markerOptions.position(latLng);
+            markerOptions.icon(BitmapDescriptorFactory.fromResource(R.drawable.car));
+            markerOptions.rotation(location.getBearing());
+            markerOptions.anchor((float) 0.5, (float) 0.5);
+            userLocationMarker = mMap.addMarker(markerOptions);
+        } else {
+            //Используем предыдущий маркер
+            userLocationMarker.setPosition(latLng);
+            userLocationMarker.setRotation(location.getBearing());
+        }
+    }
+
     private void startLocationUpdates() {
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
                 ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
@@ -514,8 +662,6 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
             stopLocationUpdate();
         }
     }
-
-
 
     @Override
     protected void onStart() {
@@ -577,8 +723,6 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
         assignedCustomerRef = FirebaseDatabase.getInstance().getReference()
                 .child("Users").child("Drivers").child(driverID).child("CustomerRideID");
 
-        //Тут добавить обработку массива Запросов на поездку и поочередно, с задержкой, выдавать водителю заявки
-
         assignedCustomerRefListener = assignedCustomerRef.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
@@ -590,15 +734,44 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
                         String[] myArray = {};
                         myArray = customerIDs.keySet().toArray(new String[customerIDs.size()]);
                         customerID = myArray[0];
-                        dialog.show();
+                        DialogShow();
                     }
                 } else {
                     it = 1;
                     customerID = "";
 
-                    if (PickUpMarker != null) {
+                    if (PickUpMarker != null & RoadMarker != null) {
                         PickUpMarker.remove();
+                        RoadMarker.remove();
                     }
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+
+            }
+        });
+    }
+
+    private void DialogShow() {
+        DatabaseReference reference = FirebaseDatabase.getInstance().getReference()
+                .child("Customers Requests")
+                .child(customerID);
+
+        reference.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                if (snapshot.exists() && snapshot.getChildrenCount() > 1 && customerID != "") {
+                    pointAString = snapshot.child("adressA").getValue().toString();
+                    pointBString = snapshot.child("adressB").getValue().toString();
+                    pointA.setText(pointAString);
+                    pointB.setText(pointBString);
+                    textOrderFound.setText("Новый заказ поблизости!");
+                    linearLayout.setVisibility(View.VISIBLE);
+                    acceptBtn.setText("Принять");
+                    rejectBtn.setText("Отклонить");
+                    dialog.show();
                 }
             }
 
@@ -611,28 +784,40 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
 
 
     private void getAssignedCustomerPosition() {
-        AssignedCustomerPosition = FirebaseDatabase.getInstance().getReference().child("Orders").child(orderID).child("CustomerLocation").child("l");
+        AssignedCustomerPosition = FirebaseDatabase.getInstance().getReference().child("Orders").child(orderID);
 
-        AssignedCustomerPosition.addValueEventListener(new ValueEventListener() {
+        AssignedCustomerPosition.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
-                if (snapshot.exists()) {
-                    List<Object> customerPosition = (List<Object>) snapshot.getValue();
+                if (snapshot.child("CustomerLocation").exists()) {
+                    //Место самовывоза
+                    List<Object> customerPosition = (List<Object>) snapshot.child("CustomerLocation").child("l").getValue();
                     double LocationLat = 0;
                     double LocationLng = 0;
-                    //Тут необходимо добавить диалоговое окно с информацие о заказчике.
 
-                    if (customerPosition.get(0) != null) {
-                        LocationLat = Double.parseDouble(customerPosition.get(0).toString());
-                    }
-                    if (customerPosition.get(1) != null) {
-                        LocationLng = Double.parseDouble(customerPosition.get(1).toString());
-                    }
+                    if (customerPosition.get(0) != null) { LocationLat = Double.parseDouble(customerPosition.get(0).toString()); }
+                    if (customerPosition.get(1) != null) { LocationLng = Double.parseDouble(customerPosition.get(1).toString()); }
 
-                    LatLng DriverLatLng = new LatLng(LocationLat, LocationLng);
+                    LatLng CustomerLatLng = new LatLng(LocationLat, LocationLng);
 
-                    PickUpMarker = mMap.addMarker(new MarkerOptions().position(DriverLatLng).title("Забрать заказчика тут"));
-                }
+
+                    //Пункт доставки
+                    List<Object> lastPosition = (List<Object>) snapshot.child("LastPoint").child("l").getValue();
+                    double LocationLat1 = 0;
+                    double LocationLng1 = 0;
+
+                    if (lastPosition.get(0) != null) { LocationLat1 = Double.parseDouble(lastPosition.get(0).toString()); }
+                    if (lastPosition.get(1) != null) { LocationLng1 = Double.parseDouble(lastPosition.get(1).toString()); }
+
+                    LatLng LastLatLng = new LatLng(LocationLat1, LocationLng1);
+
+                    PickUpMarker = mMap.addMarker(new MarkerOptions().position(CustomerLatLng).title("Забрать заказчика тут")); //Создаем маркер пункта места нахождения заказчика
+                    RoadMarker = mMap.addMarker(new MarkerOptions().position(LastLatLng).title("Место назначения")); //Создаем маркер места назначения заказчика
+
+                    price = snapshot.child("startPrice").getValue().toString();
+
+                    startListenersDistance();
+                } else getAssignedCustomerPosition();
             }
 
             @Override
@@ -642,14 +827,16 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
         });
     }
 
+    private void startListenersDistance() {
+        DistanceCheckStatus = true;
+    }
+
+    private void startRoadToLastPoint() {
+        RoadToLastPointStatus = true;
+    }
+
     private void CustomerApprove(){
-        LinInfo.setVisibility(View.VISIBLE);
-        LinInfo.setEnabled(true);
-        DriverInfoBtn.setVisibility(View.VISIBLE);
-        DriverInfoBtn.setEnabled(true);
         showLinInfo();
-        DriverApprovedButton.setText("Отменить заказ");
-        getAssignedCustomerPosition();
     }
 
     private void showLinInfo() {
@@ -661,32 +848,16 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 if (snapshot.exists()) {
+                    DriverApprovedButton.setText("Отменить заказ");
+                    LinInfo.setVisibility(View.VISIBLE);
+                    LinInfo.setEnabled(true);
                     String name = snapshot.child("name").getValue().toString();
                     String phone = snapshot.child("phone").getValue().toString();
-                    DatabaseReference reference1 = FirebaseDatabase.getInstance().getReference()
-                            .child("Customers Requests")
-                            .child(customerID);
-                    reference1.addListenerForSingleValueEvent(new ValueEventListener() {
-                        @Override
-                        public void onDataChange(@NonNull DataSnapshot snapshot) {
-                            if(snapshot.exists()) {
-                                String adress1 = snapshot.child("adressA").getValue().toString();
-                                String adress2 = snapshot.child("adressB").getValue().toString();
-                                txtAdress.setText(adress1);
-                                finalAdress = adress2;
-                            }
-                        }
-
-                        @Override
-                        public void onCancelled(@NonNull DatabaseError error) {
-
-                        }
-                    });
+                    txtAdress.setText(pointAString);
                     txtName.setText(name);
                     txtPhone.setText(phone);
-                } else {
-                    Toast.makeText(DriversMapActivity.this, "Нет информации о пользователе", Toast.LENGTH_SHORT).show();
-                    //Механизм отмены заказа должен быть тут
+                    mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(56.129057, 40.406635), 12.0f));
+                    getAssignedCustomerPosition();
                 }
             }
 
@@ -715,11 +886,9 @@ public class DriversMapActivity extends FragmentActivity implements OnMapReadyCa
                 geoFire.setLocation("DriverLocation", new GeoLocation(lastLocation.getLatitude(), lastLocation.getLongitude()));
 
                 String date = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(Calendar.getInstance().getTime());
-                int startPrice = 60 + (int) (Math.random() * 200);
 
                 HashMap<String, Object> userMap = new HashMap<>();
                 userMap.put("startTimeTrip", date);
-                userMap.put("startPrice", String.valueOf(startPrice));
                 userMap.put("tokenDriver", driverID);
 
                 orderRef.updateChildren(userMap);
